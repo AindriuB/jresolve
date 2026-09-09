@@ -34,6 +34,15 @@ end-to-end test needs — exact, and similarity-banded.
 - [ ] A test composes a `CompositeNormalizer` from task 03 into a `DefaultFieldPipeline` and asserts `prepare` is idempotent for a `String` normalized type.
 - [ ] No type, member or Javadoc word in this package names a person, name, address, date of birth or country.
 
+## Note from task 02
+
+`comparison.TokenSplitter` already exists (landed with task 02's
+`TokenSimilarity`). It is currently implemented only by a test lambda, not by
+anything in main sources, so it is available for reuse. This task must use it
+rather than invent a second tokenising abstraction — a review pass on task 02
+checked `normalization/` (task 03) for the same collision and found none;
+`field/` is the next place a duplicate splitter could plausibly appear.
+
 ## Out of scope
 - The resolver, the builder and cost-tier scheduling — task 07 consumes `cost` but owns the loop.
 - Scoring weights and required-field enforcement at scoring time — task 06 owns those; `required` here is data on the definition only.

@@ -11,16 +11,17 @@ tasks, four waves. Wave order below reflects dependency edges recorded in
   `java18` gate, JUnit 5 + AssertJ. Everything else in this milestone compiles
   against it. Merged; see `docs/plan/HISTORY.md`.
 
-- [ ] **02 — Similarity metrics.** Jaro-Winkler, Levenshtein-derived metrics
-  with property tests (bounded `[0,1]`, `sim(x,x)==1`, exact symmetry). No
-  blocker; wave 2, concurrent with 03 and 04 (disjoint packages).
+- [x] **02 — Similarity metrics.** Jaro-Winkler, Levenshtein-derived metrics
+  with property tests (bounded `[0,1]`, `sim(x,x)==1`, exact symmetry). Merged;
+  see `docs/plan/HISTORY.md`.
 
 - [ ] **03 — Normalization primitives.** Unicode/case/token normalization used
   by `FieldPipeline.prepare`. No blocker; wave 2, concurrent with 02 and 04.
+  In flight on attempt 3.
 
 - [ ] **04 — Core value types.** `ComparisonCategory`, `Score`/`ScoreScale`,
   `FieldEvidence`, `MatchEvidence` and related immutable types. No blocker;
-  wave 2, concurrent with 02 and 03.
+  wave 2, concurrent with 02 and 03. In flight on attempt 3.
 
 - [ ] **05 — Field layer.** `FieldDefinition`, `FieldPipeline`, field
   comparators built on 02-04. Blocked on 02, 03, 04. Wave 3, concurrent with 06.

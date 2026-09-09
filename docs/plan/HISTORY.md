@@ -3,6 +3,44 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-09 — Similarity metrics land (task 02)
+
+`jresolve-core` now has a `comparison/` package: `SimilarityMetric`, and three
+implementations — `JaroWinklerSimilarity`, `LevenshteinSimilarity` and
+`TokenSimilarity` (a delegate-plus-splitter best-match-mean over tokens). All
+three are pure functions of two strings, treat `null` as empty, and are bounded
+in `[0,1]` and exactly symmetric, each backed by a property test over a
+20-plus-pair synthetic corpus. A `TokenSplitter` functional interface also
+landed, used today only by a test lambda.
+
+**Cost:** Took two attempts. Attempt 1 tested PASS — 29 tests, a full mutation
+battery, hand-computed values agreeing — and was rejected in review anyway:
+`TokenSimilarityTest.weightsBestMatchesBySideTokenCounts` derived its expected
+value by calling `JaroWinklerSimilarity` at test time and then asserting the
+code against its own output, so it could not detect a regression in the
+delegate it was supposed to be exercising. Attempt 2 rewrote it against a
+hand-derived expectation — a token pair where Jaro-Winkler is exactly 0.0
+because no characters fall within the match window — and proved the fix by
+perturbing the delegate and watching the test fail where it had previously
+passed. The general lesson recurred in both 03 and 04 the same wave and is
+worth restating here: a green suite is evidence about the tests, not about the
+code, until something has been broken on purpose and observed to fail.
+
+`TokenSplitter` was not named in the task file but was accepted after a
+cross-branch check against 03's concurrent work: `normalization/` is
+`String`-to-`String` throughout with no tokenising abstraction to collide
+with. Nothing in 02's main sources implements `TokenSplitter` yet — only a
+test lambda does — so task 05 is where a second splitter could be invented
+independently; noted directly in `docs/plan/tasks/05-field-layer.md` so it
+isn't rediscovered.
+
+Two constructor guards added to `JaroWinklerSimilarity` in attempt 2 (prefix
+scale bounds) have no automated test covering them — the tester verified them
+by hand with a scratch class — so deleting either guard would survive the
+suite unnoticed; worth a property or unit test in a later pass. `mvn clean
+verify` now runs roughly 9-13 seconds from clean, up from 7-8 at task 01's
+close.
+
 ## 2026-09-09 — Maven multi-module build skeleton lands (task 01)
 
 The repo now has a real reactor build: a root `pom` with `jresolve-core` and

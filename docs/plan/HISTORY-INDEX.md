@@ -20,4 +20,5 @@ no row is one `planner` cannot find, and will re-plan.
 
 | Date | Task IDs | Summary | Heading (grep this exact string) |
 |---|---|---|---|
+| 2026-09-09 | 02 | `comparison/` package lands: Jaro-Winkler, Levenshtein, token-set similarity metrics, all bounded/reflexive/exactly-symmetric; rejected once for a self-referential test assertion | 2026-09-09 — Similarity metrics land (task 02) |
 | 2026-09-09 | 01 | Reactor build stood up: core + profiles-ie modules, JDK 17 toolchain, `release=8`, non-skippable animal-sniffer `java18` gate, JUnit 5 + AssertJ | 2026-09-09 — Maven multi-module build skeleton lands (task 01) |

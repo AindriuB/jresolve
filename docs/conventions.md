@@ -82,6 +82,21 @@ term moved. Never assert a score against a value produced by running the code.
 Fixtures are synthetic. No real personal data in any file, ever — including
 names taken from a public dataset of real people.
 
+A character literal a reader can see in context may be written literally; one
+that is invisible by definition must be written as an escape. Non-breaking
+space, zero-width characters, and combining marks are invisible — write them
+as `\u00A0`, `\u0301` and so on, or build them with an explicit API call
+such as `Normalizer.normalize(..., Normalizer.Form.NFD)`, never by pasting
+the raw character into source. The failure this prevents: an editor's
+trim-whitespace or Unicode-normalizing pass silently rewrites the literal in
+*both* the source under test and the test that checks it, so the behaviour it
+exists to guard is lost while the suite stays green — nothing fails, because
+both sides moved together. This was found five times in one wave in task 03:
+two by review, a third by the implementer generalising the first two, and a
+fifth by the next review pass. A byte scan for one specific sequence proved
+only that one class was clean of it; it reads like proof the whole package is
+clean and is not.
+
 No sleeps, no ordering dependence between tests, no shared mutable static.
 
 ## Code comments *(kit)*
