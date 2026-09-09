@@ -3,6 +3,70 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-09 — Normalization primitives and core value types land (tasks 03, 04)
+
+`jresolve-core` gains two more packages. `normalization/` (task 03): a
+`StringNormalizer` functional interface plus stages for Unicode form, case
+folding, combining-mark removal, apostrophe variants, punctuation and
+whitespace, composed by an immutable `CompositeNormalizer`. `evidence/` and
+`result/` (task 04): `ComparisonCategory` (interned, not an enum),
+`FieldEvidence`/`DefaultFieldEvidence`/`MatchEvidence`, and
+`Score`/`ScoreScale`/`Decision`/`MatchResult`/`ScoredCandidate`/`FieldContribution`
+— the immutable vocabulary tasks 05-07 build against. Union build on `main`
+after both merges: `mvn clean verify`, `BUILD SUCCESS`, 142 tests across 21
+test classes, exit 0.
+
+**Cost:** Both tasks took three attempts, and both converged the same way —
+production code was correct at attempt 1 in each case; every rejection was
+about a state that could not fail while the suite stayed green.
+
+03's defect was a non-breaking space written as a raw invisible character one
+line above an ordinary space, visually identical to it. Any editor's
+trim-whitespace pass would silently rewrite both the production literal and
+the test's own literal to a plain space, so `WhitespaceNormalizer` would stop
+folding NBSP and the test would keep passing — degrading together, not apart.
+Found five times across the wave: twice by review, a third by the implementer
+generalising the first two, a fourth (a combining acute, `CC 81`, in
+`UnicodeFormNormalizerTest`) by the next review pass after attempt 2's byte
+scan for `C2 A0` correctly found zero NBSP instances and incorrectly read as
+proof the whole invisible-character class was clean, and closed on attempt 3
+by enumerating every non-ASCII code point in both owned trees with a verdict
+per entry rather than scanning for one more sequence. That enumeration, and
+the rule it now backs in `docs/conventions.md#tests`, is the artifact that
+outlives the fix.
+
+04's defect was that `MatchResult` permitted states that contradicted its own
+documented contract: `isMatch()` true with `getMatch()` null, or the reverse,
+or a second-best score with no best score to be second to. Attempt 2 closed
+the named instances one at a time and reopened a sibling each time — reject
+`NO_MATCH` carrying a candidate, and `MATCH` with a null match was still
+legal; guard `getMargin()`'s NPE, and the `IllegalStateException` it threw
+instead still misdescribed its own cause. Attempt 3 stopped patching cases and
+wrote down the legal set instead: 7 of 24 combinations of (decision, match,
+score, secondBestScore), enforced exactly in the constructor, with a
+24-combination matrix test asserting accepted equals legal in both
+directions. Recorded as an amendment to `docs/design-decisions.md#d12` and in
+`docs/architecture.md` under "The type model" — 05, 06 and 07 all consume
+`MatchResult` and need the set, not just the current absence of a bug.
+
+The lesson that generalizes past this wave: fixing the instances a review
+names produces another review; fixing the class ends it. A green suite is
+evidence about the tests, not the code, until something is broken on purpose
+and observed to fail — attempt 3 in both tasks is the only attempt that left
+behind an artifact that stays true on its own (the byte enumeration, the
+matrix test) rather than one more instance that happened to be found.
+
+Three items raised in review and left open because no task owns the file:
+`JaroWinklerSimilarity`'s two constructor guards (from task 02) still have no
+automated test; `MatchEvidence.toString()`'s `evidence == null` branch is now
+dead code since the constructor rejects null values; and
+`UnicodeFormNormalizerTest:28` feeds a precomposed literal to an NFD test,
+which passes today but proves nothing under an NFD-normalizing editor pass.
+Recorded in `docs/plan/PLAN.md` under "Known gaps" rather than fixed by this
+close-out, per the retired task files' scope. `Score.algorithm` (task 04) is
+unvalidated and may be null; task 06 is expected to stamp it in practice, and
+a note to that effect is in `docs/plan/tasks/06-scoring-and-decision.md`.
+
 ## 2026-09-09 — Similarity metrics land (task 02)
 
 `jresolve-core` now has a `comparison/` package: `SimilarityMetric`, and three

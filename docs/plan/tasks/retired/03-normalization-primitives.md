@@ -128,3 +128,29 @@ in the repo. It has survived only in these review notes, which is why it was
 applied four times and missed a fifth. It belongs in docs/conventions.md, which
 is outside this task's `Owns`. Filed separately; do not edit that file from this
 branch.
+
+## Attempt 3 - passed
+
+Tester PASS (57 tests unaffected in count; the one changed test still asserts
+the same behaviour, correctly this time), reviewer APPROVE. Commit
+`cb8304d`: escaped the invisible combining acute in
+`UnicodeFormNormalizerTest` (`"e" + U+0301` raw -> `"é"`), matching the
+NBSP fix from attempt 1.
+
+Per attempt 2's instruction, the fix was not scoped to the one named instance.
+Every non-ASCII code point committed in both the `normalization` main and test
+trees was enumerated and given an individual verdict: em dashes in prose
+Javadoc and precomposed Latin-1 letters are visible in context and stay
+literal; the apostrophe variant set stays literal per the attempt 1 ruling
+(named beside each code point in Javadoc, tester-verified byte-correct); the
+combining acute was the only remaining invisible instance, and it is now
+escaped. This is the artifact that outlives the fix: a byte-level enumeration
+with a verdict per entry, not a scan for one sequence.
+
+The rule this defect class was hiding behind now has a home:
+`docs/conventions.md#tests` states it directly — a literal a reader can see in
+context may stay literal, one invisible by definition must be an escape — with
+this task's five-instance count as the worked example of why a scan for one
+byte sequence proves that sequence is clean and nothing else.
+
+Merged to `main` in wave 2's close-out.

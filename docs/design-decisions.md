@@ -290,6 +290,28 @@ architecture diagram nor the builder, so nothing says when it runs. It runs
 between cost tiers, before scoring, as a veto (see D4), and the builder exposes
 it as `.rule(...)`.
 
+**Amendment (task 04, wave 2).** Removing the redundant `matched` field stops
+`isMatch()` and `getMatch()` disagreeing, but it does not by itself stop other
+combinations of `decision`, `match`, `score` and `secondBestScore` from
+disagreeing with each other — that took two further review rounds to
+surface. The legal set, now enforced in the constructor, is exactly these
+seven of the twenty-four combinations:
+
+- `MATCH` requires a non-null `match` and a non-null `score`.
+- `REVIEW` requires a null `match` and a non-null `score` — review means a
+  scored candidate is ambiguous, there is no reviewing nothing.
+- `NO_MATCH` requires a null `match` and permits either a null or non-null
+  `score` (two combinations) — it is the only decision reachable with no
+  candidates evaluated, hence the only one where a null score is legal.
+- `secondBestScore` is illegal whenever `score` is null, regardless of
+  decision.
+
+`MatchResultTest` carries a 24-combination construction matrix that asserts
+accepted equals legal in both directions, so a later widening or narrowing of
+the set fails a test rather than passing silently. `getMargin()`'s `@throws`
+documents the `score == null` arm as unreachable by construction, not a
+defensive check.
+
 ## D13 — `CandidateIndex` does not require string IDs
 
 *Amends §35, §36, §97.*

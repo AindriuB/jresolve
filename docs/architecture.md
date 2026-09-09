@@ -136,6 +136,19 @@ enormous at p=0.99 and negligible at p=0.5. The builder validates that the
 decision engine's thresholds were expressed on the scorer's scale, and fails at
 `build()` when they were not.
 
+**`MatchResult` permits exactly seven of the twenty-four states its four
+fields could combine into.** `match != null` if and only if
+`decision == MATCH`; `score` is required for `MATCH` and `REVIEW`;
+`secondBestScore` is illegal without `score`. `REVIEW` always carries a score —
+review means a scored candidate is ambiguous, there is no reviewing nothing.
+`NO_MATCH` is the only decision reachable with a null score, because it is the
+only one reachable with no candidates evaluated. `getMargin()`'s `@throws` is
+written against this: the `score == null` arm is unreachable by construction,
+not a defensive check against a case that can occur. Enforced in the
+constructor and pinned by a 24-combination matrix test in `MatchResultTest`
+that asserts accepted equals legal in both directions (task 04, see
+`docs/design-decisions.md#d12`).
+
 **Comparison is cost-ordered and can short-circuit.** Each field declares a cost
 tier. The resolver compares cheap tiers first and evaluates hard
 `CandidateRule`s between tiers, so a candidate whose date of birth conflicts

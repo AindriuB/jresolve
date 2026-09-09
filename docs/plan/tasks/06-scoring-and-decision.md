@@ -23,6 +23,16 @@ without touching the engine.
 - docs/conventions.md#tests — hand-calculated expectations with the arithmetic in a comment; never assert a score against a value the code produced.
 - docs/conventions.md#errors — configuration errors surface at construction with a message naming the field and the constraint, never a value.
 
+## Note carried from task 04's review (wave 2)
+`Score.algorithm` is unvalidated by `Score`'s own constructor and may be null
+today — task 04 left it that way deliberately, since only this task knows what
+a stable identifier looks like. `RuleBasedScorer` stamping it (acceptance
+criterion below) closes the gap in practice, but nothing stops a future caller
+constructing a `Score` with a null `algorithm` directly. If that is worth
+closing, it means rejecting null at `Score` construction — which is a change to
+a task-04-owned file and out of this task's `Owns`; raise it rather than
+patching `result/Score.java` from here.
+
 ## Acceptance
 - [ ] `MatchScorer` declares `ScoringResult score(MatchEvidence evidence)` and `ScoreScale scale()`. `ScoringResult` is immutable and is either scorable — carrying a `Score` and an ordered `List<FieldContribution>` — or unscorable, carrying a template key and no score; `isScorable()` distinguishes them.
 - [ ] `RuleBasedScorer` is immutable, built by a nested builder, and configures: a weight per `(field, ComparisonCategory)` pair, a default weight per field, a base score, and a set of required field names.

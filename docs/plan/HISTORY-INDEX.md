@@ -20,5 +20,6 @@ no row is one `planner` cannot find, and will re-plan.
 
 | Date | Task IDs | Summary | Heading (grep this exact string) |
 |---|---|---|---|
+| 2026-09-09 | 03, 04 | `normalization/`, `evidence/` and `result/` packages land; union build 142 tests/21 classes green. Both tasks took 3 attempts, both for defects invisible to a green suite — an invisible-character literal in 03, a self-contradicting `MatchResult` state space in 04, closed only when generalized to a class-level fix (byte enumeration; 24-combination legal-state matrix) | 2026-09-09 — Normalization primitives and core value types land (tasks 03, 04) |
 | 2026-09-09 | 02 | `comparison/` package lands: Jaro-Winkler, Levenshtein, token-set similarity metrics, all bounded/reflexive/exactly-symmetric; rejected once for a self-referential test assertion | 2026-09-09 — Similarity metrics land (task 02) |
 | 2026-09-09 | 01 | Reactor build stood up: core + profiles-ie modules, JDK 17 toolchain, `release=8`, non-skippable animal-sniffer `java18` gate, JUnit 5 + AssertJ | 2026-09-09 — Maven multi-module build skeleton lands (task 01) |

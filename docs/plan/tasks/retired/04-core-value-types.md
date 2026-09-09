@@ -138,3 +138,32 @@ above one at a time. Write down which of the 24 combinations of decision, match,
 score and second-best score are legal, enforce exactly that set in the
 constructor, and let the tester's matrix confirm accepted equals legal. Fixing
 enumerated instances is what produced two rounds of siblings.
+
+## Attempt 3 - passed
+
+Tester PASS (58 tests; 24-combination matrix confirms accepted equals legal in
+both directions), reviewer APPROVE. Commit `974b26c`: `MatchResult`'s
+constructor now enforces the legal set stated as data rather than as two
+patched cases. Seven of twenty-four combinations of (decision, match, score,
+secondBestScore) are accepted:
+
+- `MATCH` requires a non-null `match` and a non-null `score` (1 combination).
+- `REVIEW` requires a null `match` and a non-null `score` (1 combination) — a
+  review is always a scored candidate that is ambiguous; there is no
+  reviewing nothing.
+- `NO_MATCH` requires a null `match` and permits `score` null or non-null (2
+  combinations) — it is the only decision reachable with no candidates
+  evaluated, hence the only one where a null score is legal.
+- Each of the above forbids `secondBestScore` non-null when `score` is null
+  (the remaining 3 legal combinations layer `secondBestScore` onto the cases
+  above that already carry a `score`).
+
+Constructor Javadoc changed from "should" to "must" for the candidate, per
+attempt 2's note. `getMargin()`'s `@throws` for the null-score case is now
+correct by construction rather than defensive: that arm is unreachable.
+
+This closes both defects named across attempts 1 and 2 as one rule instead of
+two patches, and is the reason neither produced a third sibling. Merged to
+`main` in wave 2's close-out. The legal set is recorded for later tasks in
+`docs/design-decisions.md#d12` (amendment) and `docs/architecture.md` under
+"The type model".
