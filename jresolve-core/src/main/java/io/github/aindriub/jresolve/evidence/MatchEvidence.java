@@ -26,6 +26,11 @@ public final class MatchEvidence {
         if (fields == null) {
             throw new IllegalArgumentException("fields must not be null");
         }
+        for (Map.Entry<String, FieldEvidence> entry : fields.entrySet()) {
+            if (entry.getValue() == null) {
+                throw new IllegalArgumentException("fields must not contain a null value for key " + entry.getKey());
+            }
+        }
         this.fields = Collections.unmodifiableMap(new LinkedHashMap<String, FieldEvidence>(fields));
         this.complete = complete;
     }

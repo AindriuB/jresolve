@@ -60,4 +60,18 @@ class ScoredCandidateTest {
         assertThatThrownBy(() -> new ScoredCandidate<>("candidateRef", score, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void toStringExcludesTheCandidatesToString() {
+        Score score = new Score(1.0, ScoreScale.POINTS, "rules", null);
+        Object sentinelCandidate = new Object() {
+            @Override
+            public String toString() {
+                return "SENTINEL-CANDIDATE-VALUE";
+            }
+        };
+        ScoredCandidate<Object> candidate = new ScoredCandidate<>(sentinelCandidate, score, new ArrayList<>());
+
+        assertThat(candidate.toString()).doesNotContain("SENTINEL-CANDIDATE-VALUE");
+    }
 }

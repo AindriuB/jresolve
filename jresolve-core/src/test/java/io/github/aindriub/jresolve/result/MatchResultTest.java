@@ -102,4 +102,25 @@ class MatchResultTest {
         assertThatThrownBy(() -> new MatchResult<>(Decision.MATCH, "candidateRef", score, null, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void rejectsAMatchCandidateWhenDecisionIsNotMatch() {
+        Score score = new Score(5.0, ScoreScale.POINTS, "rules", null);
+        assertThatThrownBy(() -> new MatchResult<>(Decision.NO_MATCH, "candidateRef", score, null, new ArrayList<>()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void toStringExcludesTheCandidatesToString() {
+        Score score = new Score(5.0, ScoreScale.POINTS, "rules", null);
+        Object sentinelCandidate = new Object() {
+            @Override
+            public String toString() {
+                return "SENTINEL-CANDIDATE-VALUE";
+            }
+        };
+        MatchResult<Object> result = new MatchResult<>(Decision.MATCH, sentinelCandidate, score, null, new ArrayList<>());
+
+        assertThat(result.toString()).doesNotContain("SENTINEL-CANDIDATE-VALUE");
+    }
 }

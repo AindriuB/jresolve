@@ -71,4 +71,13 @@ class MatchEvidenceTest {
         assertThatThrownBy(() -> new MatchEvidence(null, true))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void rejectsANullValueInTheFieldsMap() {
+        Map<String, FieldEvidence> input = new LinkedHashMap<>();
+        input.put("field", null);
+
+        assertThatThrownBy(() -> new MatchEvidence(input, true))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

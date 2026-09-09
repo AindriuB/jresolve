@@ -49,6 +49,11 @@ class ComparisonCategoryTest {
     }
 
     @Test
+    void ofTrimsTheNameBeforeUsingItAsTheInternKey() {
+        assertThat(ComparisonCategory.of(" HIGH ")).isSameAs(ComparisonCategory.HIGH);
+    }
+
+    @Test
     void allStandardConstantsExist() {
         assertThat(ComparisonCategory.EXACT.getName()).isEqualTo("EXACT");
         assertThat(ComparisonCategory.ALIAS_TRANSLATION.getName()).isEqualTo("ALIAS_TRANSLATION");

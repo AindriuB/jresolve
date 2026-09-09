@@ -49,12 +49,13 @@ public final class ComparisonCategory {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("category name must not be null, empty or whitespace-only");
         }
-        ComparisonCategory existing = INSTANCES.get(name);
+        String key = name.trim();
+        ComparisonCategory existing = INSTANCES.get(key);
         if (existing != null) {
             return existing;
         }
-        ComparisonCategory created = new ComparisonCategory(name);
-        ComparisonCategory raced = INSTANCES.putIfAbsent(name, created);
+        ComparisonCategory created = new ComparisonCategory(key);
+        ComparisonCategory raced = INSTANCES.putIfAbsent(key, created);
         return raced != null ? raced : created;
     }
 

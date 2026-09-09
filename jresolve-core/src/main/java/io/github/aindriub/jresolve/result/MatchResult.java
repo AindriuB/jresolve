@@ -36,6 +36,9 @@ public final class MatchResult<C> {
         if (candidates == null) {
             throw new IllegalArgumentException("candidates must not be null");
         }
+        if (match != null && decision != Decision.MATCH) {
+            throw new IllegalArgumentException("match must be null unless decision == Decision.MATCH");
+        }
         this.decision = decision;
         this.match = match;
         this.score = score;
@@ -96,7 +99,7 @@ public final class MatchResult<C> {
      * @throws IllegalStateException if {@link #hasSecondBest()} is false
      */
     public double getMargin() {
-        if (secondBestScore == null) {
+        if (secondBestScore == null || score == null) {
             throw new IllegalStateException("margin is not meaningful without a second-best score; check hasSecondBest() first");
         }
         return score.getValue() - secondBestScore.getValue();
