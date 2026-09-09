@@ -66,3 +66,76 @@ rediscovering. It does not change or add to the acceptance criteria below.
 - Soft `MatchRule`s and `RuleResult`.
 - Any edit inside `field/`, `scoring/`, `decision/`, `evidence/` or `result/` — tasks 04, 05 and 06 own those files. If a signature there is wrong, report it rather than editing.
 - The end-to-end fixtures and scenario test — task 08.
+
+## Attempt 1 - failed
+
+Tester PASS (250 tests; D2 proven at the extractor level - 1 source-side call
+against 37 candidate-side; all ten of §98's invalid configurations rejected at
+`build()`; short-circuit mutation caught by three named tests; determinism held
+across shuffled orders). Reviewer CHANGES. Three defects, all the same shape: a
+guard that does not guard.
+
+**Defect 1 - must fix. The D6 scale check is vacuous.** `EntityResolverBuilder`
+validates the `DecisionThresholds` passed to `.thresholds(...)` against the
+scorer's scale, but that object never reaches the resolver - the engine uses the
+thresholds it was constructed with. So this builds cleanly:
+
+    .decisionEngine(new ThresholdDecisionEngine<>(POINTS thresholds))
+    .thresholds(PROBABILITY thresholds matching the scorer)
+
+and the engine then interprets POINTS thresholds against probability scores at
+runtime. The check inspects an object with no runtime effect.
+
+Note the tester and reviewer do not disagree here. The tester confirmed the
+exception genuinely throws from inside `build()` before the resolver is
+constructed - true, and worth having. The reviewer asked whether the checked
+object controls anything, and it does not. Verifying that a mechanism works is
+not the same as verifying it is wired to something. That is the third time this
+milestone a correct measurement has supported a broader claim than it earned.
+
+The method is genuinely necessary: `MatchDecisionEngine` exposes neither its
+thresholds nor its scale, and `decision/` is outside this task's `Owns`. So the
+in-scope fix is a Javadoc contract stating that the instance passed to
+`.thresholds(...)` must be the same one the engine holds, and a note reported
+upward that `MatchDecisionEngine` should expose its scale so a later milestone
+can make the check real rather than contractual. Do not widen `Owns` to fix
+`decision/`.
+
+**Defect 2 - must fix.** `.rule(null)` is accepted and then silently discarded in
+the resolver constructor, while every other null in this builder fails
+`build()`. This is the sibling §98's enumerated list did not name - the same
+pattern that cost tasks 03 and 04 an extra round each. Reject it at `build()`
+with the other nulls.
+
+**Defect 3 - must fix.** `.required(fieldName)` sets `FieldDefinition.isRequired()`,
+which nothing in the library reads - `RuleBasedScorer` carries its own separate
+required-field mechanism. A candidate missing a required field on both sides
+still scores and can return MATCH. The method promises enforcement it does not
+deliver. Either make the resolver honour it, or state plainly in the Javadoc that
+it is metadata for a scorer to consult and name which scorer mechanism actually
+enforces it. Say which you chose and why.
+
+**Settled - do not change.** Two API doubts raised by the orchestrator were ruled
+against, with reasons, and should not be revisited:
+
+- `.cost(fieldName, cost)` and `.required(fieldName)` taking string names is
+  consistent with §61. Extraction stays type-safe through method references; the
+  logical field name is model configuration, which §61 explicitly keeps
+  string-keyed, and both methods validate unknown names at `build()`.
+- Silently skipping a null candidate element is acceptable because it is
+  documented at `EntityResolver.java:21-22` and asserted by a test, making it a
+  stated deterministic behaviour rather than an omission. §76 requires null
+  behaviour be documented, not that it throw.
+
+Also settled and correct: `DefaultEntityResolver` stays package-private and is
+never returned by name; the D1 sugar matches the task-file note exactly; the
+`isComplete()` flag is derived from field count rather than reporting absent
+fields as `MISSING_BOTH`.
+
+**Suggestions - take unless you disagree.**
+- `DefaultEntityResolverTest.java:104` - the 50-candidate D2 test configures a
+  single field, so "one preparation per field per source" is only exercised at
+  n=1. Add a second field.
+- `DefaultEntityResolverTest.java:276` - the eight "distinct sources" in the
+  concurrency test are value-identical, so a shared-state bug keyed on values
+  would not show. Make them differ.
