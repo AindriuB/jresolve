@@ -18,13 +18,38 @@ public final class MatchResult<C> {
     private final List<ScoredCandidate<C>> candidates;
 
     /**
+     * The legal combinations of {@code decision}, {@code match}, {@code
+     * score} and {@code secondBestScore} are exactly these:
+     * <ul>
+     *   <li>{@code decision == MATCH}: {@code match} must be non-null and
+     *       {@code score} must be non-null (a match is meaningless without
+     *       both the candidate and the score that justified it);
+     *       {@code secondBestScore} may be null or non-null.</li>
+     *   <li>{@code decision == REVIEW}: {@code match} must be null (nothing
+     *       is matched yet) and {@code score} must be non-null (review means
+     *       a scored candidate is ambiguous enough to need a human, so there
+     *       is always a score to be ambiguous about); {@code secondBestScore}
+     *       may be null or non-null.</li>
+     *   <li>{@code decision == NO_MATCH}: {@code match} must be null.
+     *       {@code score} may be null (no candidates were evaluated at all)
+     *       or non-null (candidates were evaluated but none qualified). If
+     *       {@code score} is null, {@code secondBestScore} must also be
+     *       null.</li>
+     * </ul>
+     * Independent of decision, {@code secondBestScore} must be null whenever
+     * {@code score} is null: a runner-up score is only coherent alongside the
+     * leader it trails.
+     *
      * @param decision the outcome
-     * @param match the matched candidate; should be null unless
-     *     {@code decision == Decision.MATCH}
-     * @param score the best candidate's score, or null if there were no
-     *     candidates
+     * @param match the matched candidate; must be non-null when
+     *     {@code decision == Decision.MATCH} and must be null for every
+     *     other decision
+     * @param score the best candidate's score; null only when
+     *     {@code decision == Decision.NO_MATCH} and no candidates were
+     *     evaluated
      * @param secondBestScore the second-best candidate's score, or null if
-     *     there was no second candidate
+     *     there was no second candidate; must be null whenever {@code score}
+     *     is null
      * @param candidates every candidate considered, ranked best first; copied
      *     defensively
      */
@@ -38,6 +63,16 @@ public final class MatchResult<C> {
         }
         if (match != null && decision != Decision.MATCH) {
             throw new IllegalArgumentException("match must be null unless decision == Decision.MATCH");
+        }
+        if (match == null && decision == Decision.MATCH) {
+            throw new IllegalArgumentException("match must be non-null when decision == Decision.MATCH");
+        }
+        if (score == null && (decision == Decision.MATCH || decision == Decision.REVIEW)) {
+            throw new IllegalArgumentException(
+                    "score must be non-null when decision == Decision.MATCH or Decision.REVIEW");
+        }
+        if (secondBestScore != null && score == null) {
+            throw new IllegalArgumentException("secondBestScore must be null when score is null");
         }
         this.decision = decision;
         this.match = match;

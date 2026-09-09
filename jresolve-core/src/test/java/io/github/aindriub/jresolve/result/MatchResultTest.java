@@ -111,6 +111,86 @@ class MatchResultTest {
     }
 
     @Test
+    void rejectsMatchDecisionWithNullMatch() {
+        Score score = new Score(5.0, ScoreScale.POINTS, "rules", null);
+        assertThatThrownBy(() -> new MatchResult<>(Decision.MATCH, null, score, null, new ArrayList<>()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsSecondBestScoreWithoutABestScore() {
+        Score second = new Score(3.0, ScoreScale.POINTS, "rules", null);
+        assertThatThrownBy(() -> new MatchResult<>(Decision.NO_MATCH, null, null, second, new ArrayList<>()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsReviewDecisionWithNullScore() {
+        assertThatThrownBy(() -> new MatchResult<>(Decision.REVIEW, null, null, null, new ArrayList<>()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void allowsNoMatchDecisionWithNoCandidatesEvaluated() {
+        MatchResult<String> result = new MatchResult<>(Decision.NO_MATCH, null, null, null, new ArrayList<>());
+
+        assertThat(result.getScore()).isNull();
+        assertThat(result.hasSecondBest()).isFalse();
+    }
+
+    /**
+     * The legal set, as constructor Javadoc states it: 7 of 24 combinations
+     * of (decision, match, score, secondBestScore) are legal.
+     */
+    @Test
+    void constructionMatrixMatchesTheDocumentedLegalSet() {
+        Score score = new Score(5.0, ScoreScale.POINTS, "rules", null);
+        Score second = new Score(3.0, ScoreScale.POINTS, "rules", null);
+        String match = "candidateRef";
+        List<ScoredCandidate<String>> candidates = new ArrayList<>();
+
+        for (Decision decision : Decision.values()) {
+            for (Object matchValue : new Object[] {null, match}) {
+                for (Object scoreValue : new Object[] {null, score}) {
+                    for (Object secondValue : new Object[] {null, second}) {
+                        boolean expectedLegal = isLegal(decision, matchValue != null, scoreValue != null,
+                                secondValue != null);
+                        try {
+                            new MatchResult<>(decision, (String) matchValue, (Score) scoreValue,
+                                    (Score) secondValue, candidates);
+                            assertThat(expectedLegal)
+                                    .as("decision=%s match=%s score=%s secondBest=%s should be legal",
+                                            decision, matchValue != null, scoreValue != null, secondValue != null)
+                                    .isTrue();
+                        } catch (IllegalArgumentException e) {
+                            assertThat(expectedLegal)
+                                    .as("decision=%s match=%s score=%s secondBest=%s should be rejected",
+                                            decision, matchValue != null, scoreValue != null, secondValue != null)
+                                    .isFalse();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean isLegal(Decision decision, boolean hasMatch, boolean hasScore, boolean hasSecondBest) {
+        if (hasSecondBest && !hasScore) {
+            return false;
+        }
+        switch (decision) {
+            case MATCH:
+                return hasMatch && hasScore;
+            case REVIEW:
+                return !hasMatch && hasScore;
+            case NO_MATCH:
+                return !hasMatch;
+            default:
+                throw new IllegalStateException("unhandled decision");
+        }
+    }
+
+    @Test
     void toStringExcludesTheCandidatesToString() {
         Score score = new Score(5.0, ScoreScale.POINTS, "rules", null);
         Object sentinelCandidate = new Object() {
