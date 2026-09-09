@@ -42,12 +42,19 @@ class TokenSimilarityTest {
     // {"alpha"} is 1.0, best match for "bravo" against {"alpha"} is its
     // Jaro-Winkler score, call it x. Best match for "alpha" (right) against
     // {"alpha", "bravo"} is 1.0.
-    // score = (1.0 + x + 1.0) / (2 + 1) = (2.0 + x) / 3.0
+    //
+    // Hand-computing x = jaroWinkler("bravo", "alpha"): both strings have
+    // length 5, so the Jaro match window is max(5, 5) / 2 - 1 = 1. Checking
+    // each character of "bravo" against "alpha" within a window of 1:
+    // 'b'(0) vs {a,l} no match; 'r'(1) vs {a,l,p} no match; 'a'(2) vs
+    // {l,p,h} no match; 'v'(3) vs {p,h,a} no match; 'o'(4) vs {h,a} no
+    // match. Zero matching characters means the Jaro score, and therefore
+    // the Jaro-Winkler score (no prefix boost is applied below the boost
+    // threshold), is exactly 0.0. So x = 0.0.
+    // score = (1.0 + x + 1.0) / (2 + 1) = (2.0 + 0.0) / 3.0 = 2.0 / 3.0
     @Test
     void weightsBestMatchesBySideTokenCounts() {
-        SimilarityMetric delegate = new JaroWinklerSimilarity();
-        double x = delegate.similarity("bravo", "alpha");
-        double expected = (2.0 + x) / 3.0;
+        double expected = 2.0 / 3.0;
 
         assertThat(metric.similarity("alpha bravo", "alpha")).isEqualTo(expected);
     }

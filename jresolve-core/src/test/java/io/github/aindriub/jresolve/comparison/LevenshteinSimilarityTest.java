@@ -1,7 +1,6 @@
 package io.github.aindriub.jresolve.comparison;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
 
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +33,7 @@ class LevenshteinSimilarityTest {
     // similarity = 1 - 3/7 = 4/7 = 0.571428571...
     @Test
     void kittenAndSittingMatchTheHandWorkedDistance() {
-        assertThat(metric.similarity("kitten", "sitting")).isCloseTo(4.0 / 7.0, within(0.000001));
+        assertThat(metric.similarity("kitten", "sitting")).isEqualTo(1.0 - 3.0 / 7.0);
     }
 
     // Fixed synthetic corpus: values are not drawn from any real dataset.

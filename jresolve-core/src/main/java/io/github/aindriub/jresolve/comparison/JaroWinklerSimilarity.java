@@ -26,6 +26,14 @@ public final class JaroWinklerSimilarity implements SimilarityMetric {
             throw new IllegalArgumentException(
                     "prefixScale must be within [0, 0.25], was " + prefixScale);
         }
+        if (maxPrefixLength < 0) {
+            throw new IllegalArgumentException(
+                    "maxPrefixLength must not be negative, was " + maxPrefixLength);
+        }
+        if (boostThreshold < 0.0 || boostThreshold > 1.0) {
+            throw new IllegalArgumentException(
+                    "boostThreshold must be within [0, 1], was " + boostThreshold);
+        }
         this.prefixScale = prefixScale;
         this.maxPrefixLength = maxPrefixLength;
         this.boostThreshold = boostThreshold;

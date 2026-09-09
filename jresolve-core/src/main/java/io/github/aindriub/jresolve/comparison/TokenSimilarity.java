@@ -14,6 +14,11 @@ import java.util.List;
  *
  * <p>Bounded in {@code [0.0, 1.0]}, exactly symmetric and {@code null}-safe:
  * a {@code null} argument is treated as the empty string.
+ *
+ * <p>Thread-safety is inherited from the injected delegate and splitter: this
+ * class holds no mutable state of its own, so it is safe for concurrent use
+ * exactly when both the delegate {@link SimilarityMetric} and the
+ * {@link TokenSplitter} passed to the constructor are.
  */
 public final class TokenSimilarity implements SimilarityMetric {
 
