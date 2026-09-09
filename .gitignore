@@ -1,0 +1,19 @@
+/.claude/
+/.worktrees/
+
+# Java / Maven
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+
+# Logs are scratch, never artifacts
+logs/
+*.log
