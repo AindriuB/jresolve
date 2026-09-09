@@ -22,29 +22,28 @@ tasks, four waves. Wave order below reflects dependency edges recorded in
   `FieldEvidence`, `MatchEvidence` and related immutable types. Merged after 3
   attempts; see `docs/plan/HISTORY.md`.
 
-- [ ] **05 — Field layer.** `FieldDefinition`, `FieldPipeline`, field
-  comparators built on 02-04. Unblocked — 02, 03, 04 all merged. Wave 3,
-  concurrent with 06.
+- [x] **05 — Field layer.** `FieldDefinition`, `FieldPipeline`, field
+  comparators built on 02-04. Merged on first attempt; see
+  `docs/plan/HISTORY.md`.
 
-- [ ] **06 — Scoring and decision.** Fellegi-Sunter and logistic scorers,
-  decision engine, threshold/margin validation at `build()`. Unblocked — 04
-  merged. Wave 3, concurrent with 05. Carries a note from 04's review about
-  `Score.algorithm` validation — see the task file.
+- [x] **06 — Scoring and decision.** Rule-based scorer, threshold decision
+  engine, threshold/margin validation at `build()`. Merged on first attempt;
+  see `docs/plan/HISTORY.md`.
 
 - [ ] **07 — Resolver and builder.** `EntityResolver`, its builder, candidate
-  cost-ordering and short-circuit. Blocked on 05, 06. Wave 4 on its own.
+  cost-ordering and short-circuit. Unblocked — 05, 06 both merged. Wave 4,
+  next.
 
 - [ ] **08 — End-to-end test.** Full-pipeline test exercising resolver against
-  a synthetic fixture. Blocked on 07. Wave 5 on its own.
+  a synthetic fixture. Blocked on 07. Wave 5, after it.
 
 ## Notes for implementers
 
 - `jresolve-core` build needs a JDK 17 toolchain on the building machine —
   `~/.m2/toolchains.xml`, not part of the repo. See
   `docs/architecture.md#building`.
-- `mvn clean verify` baseline at wave 2's close (01-04 merged) is 142 tests
-  across 21 test classes, `BUILD SUCCESS`. Expect it to grow as later tasks
-  land.
+- `mvn clean verify` baseline at wave 3's close (01-06 merged) is 229 tests,
+  `BUILD SUCCESS`. Expect it to grow as later tasks land.
 
 ## Known gaps (non-blocking, no task owns these)
 
@@ -65,6 +64,45 @@ files should close them in passing rather than reopen the review:
   editor pass — the reviewer judged a fourth review round not worth it for
   this one. See `docs/plan/tasks/retired/03-normalization-primitives.md`
   attempt 2 for the related (fixed) defect in the sibling NFC test.
-- `Score.algorithm` (task 04): unvalidated, may be null. Task 06 is expected
-  to stamp it with a stable identifier in practice; see the note in
-  `docs/plan/tasks/06-scoring-and-decision.md`.
+
+Raised in wave 3 (tasks 05, 06):
+
+- `Score.algorithm` (task 04): unvalidated at construction, may be null.
+  Task 06's `RuleBasedScorer` stamps a public constant on every score it
+  produces — that closes the gap for the one path that exists today, and is
+  all task 06 can do from its side. The residual is a caller constructing
+  `Score` directly with a null `algorithm`, which needs a null check in
+  `result/Score.java` — a file task 04 owns and neither 06 nor 07 does.
+  Task 07 could reject it at `build()`, but that still leaves direct
+  construction open, so this is **not task 07's to close**. Deferred to
+  milestone 2; whoever next touches `result/` should add the constructor
+  guard then.
+- `ExactFieldComparator` (task 05) derives its frequency key from
+  `toString()`, so for an `N` with value equality but a default `toString`,
+  two agreeing pairs produce different frequency keys. Latent today because
+  no consumer uses the frequency key yet, but milestone 2's frequency
+  adjustment (D5) depends on common values sharing a key — the whole point
+  is that common-value agreement weighs less than rare-value agreement. The
+  Javadoc should state a `toString`-consistent-with-`equals` requirement on
+  `N` before that lands.
+- `SimilarityBands.categoryFor` (task 05) is package-private while the class
+  and its getters are public. A comparator written outside `field/` cannot
+  reuse the banding logic and could reimplement it with silently different
+  (e.g. exclusive) bounds. Worth resolving before a later milestone adds
+  field types outside that package.
+- `ScoredCandidate` (task 04) permits a null candidate. A single such
+  candidate scored above `matchThreshold` makes `ThresholdDecisionEngine`
+  (task 06) throw from `MatchResult`'s constructor rather than return a
+  result — nothing in the planned pipeline produces a null candidate today,
+  but the failure would surface in the wrong package if something did.
+- `TokenSplitter` (task 02) still has no production implementation; task 05's
+  comparators did not need one, so it remains implemented only by a test
+  lambda. The risk of a second, independently-invented tokenising
+  abstraction now moves to whichever task first adds a token-based field
+  comparator — the address pipeline in a later milestone. Flagged in three
+  consecutive waves now; land a real implementation somewhere durable so
+  this stops being rediscovered.
+- Two test-hygiene items in task 05: a comment in
+  `FieldComparatorNullSafetyTest` describes its own failure mode backwards,
+  and `@SafeVarargs` on a reifiable `Object[]...` in
+  `ThresholdDecisionEngineTest` (task 06) is redundant.

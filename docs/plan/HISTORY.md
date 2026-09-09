@@ -3,6 +3,90 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-09 — Field layer, scoring and decision land (tasks 05, 06)
+
+`jresolve-core` gains `field/` (task 05) and `scoring/` + `decision/` (task
+06). `field/`: `FieldPipeline` (the `prepare`/`compare` split), `FieldDefinition`,
+`CostTiers`, and the two comparators the end-to-end test needs —
+`ExactFieldComparator` and `SimilarityFieldComparator` with configurable
+`SimilarityBands`. `scoring/`: `MatchScorer`, `RuleBasedScorer` (per-field,
+per-category weights summing to a `Score` on `ScoreScale.POINTS` with ordered
+`FieldContribution`s), `ScoringResult`. `decision/`: `DecisionThresholds` and
+`ThresholdDecisionEngine`, ranking scored candidates and turning them into a
+`MatchResult` via the legal-state set task 04 defined. Union build on `main`
+after both merges: `mvn clean verify`, `BUILD SUCCESS`, 229 tests, exit 0 —
+142 baseline + 53 from 05 + 34 from 06, exactly, no overlap. That settles a
+discrepancy between task 06's implementer (175 tests) and tester (176) in
+its own worktree: `scoring/` (11 + 9) plus `decision/` (5 + 9) sum to 34,
+matching the tester's count and the union arithmetic. The implementer's 175
+was an undercount by one; nothing in the union total is inconsistent with
+34 new tests from 06.
+
+**Cost:** Both tasks passed on the first attempt — the first wave in this
+milestone to do so. Both briefs carried forward what the previous six
+attempts (waves 1-2) cost: break something on purpose before reporting,
+hand-derive expectations rather than asserting a value the code produced, and
+state the legal set before enforcing anything. Neither implementer needed a
+rejection to apply all three.
+
+Two design claims moved from asserted to measured this wave, not just
+implemented:
+
+D2 (the prepare/compare split) is now demonstrated behaviourally, not just
+inferred from the signature. Task 05's test built an invocation-counting
+normalizer and drove ten candidate comparisons through a pipeline built on
+it: `prepare` on the source value ran exactly once, `compare` never touched
+the normalizer at all. That probe — count invocations on the object under
+test, not on a mock that only records calls it was told to expect — is how
+this claim should be re-verified once task 07 wires the resolver and the
+same property has to hold across a whole `resolve()` call, not one pipeline.
+
+Task 04's `MatchResult` legal set (7 of 24 combinations, closed in wave 2 by
+enumerating the whole state space rather than patching named instances) met
+its first real producer this wave. Task 06's reviewer walked every path
+`ThresholdDecisionEngine` can take by reading the code; task 06's tester
+independently drove eight scenarios through a probe of the built engine —
+empty candidate list, a single candidate above/between/below the thresholds,
+and the two-candidate match/review/no-match combinations. Neither found a
+path that constructs an illegal combination. A constraint written in one
+wave held against a producer written in the next, checked twice,
+independently, without either side needing to consult the other's method.
+
+Both implementers independently chose an inclusive-boundary operator
+(`>=` to `>`) as their mutation-testing target, and in both cases a named
+test caught it on the first try. Testers then swept every boundary rather
+than trusting the one sampled mutant: three similarity bands in 05
+(`VERY_HIGH`/`HIGH`/`MEDIUM` at 0.95/0.85/0.70) and three thresholds in 06
+(`matchThreshold`, `reviewThreshold`, `minimumMargin`), each caught by
+exactly one named test. This is the second wave running where a
+boundary-operator flip has been the sharpest mutation-testing signal in the
+codebase; it is where silent misclassification risk concentrates here.
+
+Ownership of two open items got settled rather than left ambiguous:
+`Score.algorithm`'s nullability is not task 07's to close (07 can only
+reject a null at `build()`, which does not stop direct `Score` construction
+elsewhere; the actual fix is a constructor guard in task 04's
+`result/Score.java`) — moved from "task 07 should decide" to a milestone-2
+item in `docs/plan/PLAN.md`'s Known gaps. D1's symmetric-case builder sugar
+is task 07's, and task 05 confirmed `field/` needs no change to support it;
+the concrete expression is recorded in
+`docs/plan/tasks/07-resolver-and-builder.md` as a note, not an acceptance
+criterion.
+
+Five non-blocking items went into Known gaps rather than being fixed outside
+their owning task's scope: `ExactFieldComparator`'s frequency key derives
+from `toString()`, not `equals()`, which will misattribute D5's (milestone 2)
+frequency adjustment for any `N` with value equality but a default
+`toString`; `SimilarityBands.categoryFor` is package-private while its class
+and getters are public, so an outside comparator can't reuse it and might
+reimplement banding with different bounds; `ScoredCandidate` still permits a
+null candidate, which would make `ThresholdDecisionEngine` throw from the
+wrong package if the (currently nonexistent) producer ever made one;
+`TokenSplitter` (flagged in three consecutive waves now, since task 02) still
+has no production implementation; and two small test-hygiene notes — a
+backwards comment in `FieldComparatorNullSafetyTest`, a redundant
+`@SafeVarargs` in `ThresholdDecisionEngineTest`.
+
 ## 2026-09-09 — Normalization primitives and core value types land (tasks 03, 04)
 
 `jresolve-core` gains two more packages. `normalization/` (task 03): a

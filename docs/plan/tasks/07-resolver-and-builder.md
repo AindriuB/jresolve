@@ -22,6 +22,27 @@ decision engine. `EntityResolverBuilder` validates the configuration at
 - docs/conventions.md#errors — configuration errors throw `EntityResolutionConfigurationException` from `build()` with a message naming the field and the constraint, never the data.
 - docs/conventions.md#immutability-and-threads — everything reachable from a built resolver is immutable and safe for concurrent `resolve()`.
 
+## Note carried from wave 3 (task 05) — D1 symmetric-case sugar
+
+D1 says the symmetric `field(name, sourceGetter, candidateGetter, pipeline)`
+overload is sugar over the asymmetric one. Task 05 confirmed `field/` exposes
+enough to build it with no change needed on that side:
+
+```
+field(name, S::get, C::get, pipeline)
+  == field(name,
+           s -> pipeline.prepare(S::get.apply(s)),
+           c -> pipeline.prepare(C::get.apply(c)),
+           pipeline::compare)
+```
+
+That is: wrap each extractor with `pipeline::prepare` to get the two
+`Function<_, N>` preparers, and pass `pipeline::compare` (a `FieldPipeline`
+already implements the `FieldComparator<N>` shape needed here) as the
+`FieldComparator<N>`. This is the concrete expression to drop into the
+symmetric overload's implementation — recorded here so it does not need
+rediscovering. It does not change or add to the acceptance criteria below.
+
 ## Acceptance
 - [ ] `EntityResolver<S, C>` declares `MatchResult<C> resolve(S source, Collection<C> candidates)`.
 - [ ] `CandidateRule<S, C>` declares `RuleDecision evaluate(S source, C candidate, MatchEvidence evidence)`; `RuleDecision` distinguishes rejection from continuation and nothing else.
