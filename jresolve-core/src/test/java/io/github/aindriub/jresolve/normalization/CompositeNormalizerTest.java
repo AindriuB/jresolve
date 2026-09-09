@@ -49,16 +49,7 @@ class CompositeNormalizerTest {
 
         mutableStages.add(new WhitespaceNormalizer());
 
-        assertThat(composite.getStages()).hasSize(1);
-    }
-
-    @Test
-    void exposesAnUnmodifiableStageList() {
-        CompositeNormalizer composite = new CompositeNormalizer(
-                Collections.singletonList(new CaseFoldNormalizer()));
-
-        assertThatThrownBy(() -> composite.getStages().add(new WhitespaceNormalizer()))
-                .isInstanceOf(UnsupportedOperationException.class);
+        assertThat(composite.normalize("  MixedCASE  ")).isEqualTo("  mixedcase  ");
     }
 
     @Test

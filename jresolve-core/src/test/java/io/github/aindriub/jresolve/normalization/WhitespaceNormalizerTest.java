@@ -30,7 +30,7 @@ class WhitespaceNormalizerTest {
 
     @Test
     void collapsesANonBreakingSpaceToASingleSpace() {
-        String withNonBreakingSpace = "a" + ' ' + "b";
+        String withNonBreakingSpace = "a" + '\u00A0' + "b";
 
         assertThat(normalizer.normalize(withNonBreakingSpace)).isEqualTo("a b");
     }

@@ -8,6 +8,11 @@ package io.github.aindriub.jresolve.normalization;
  * configured with {@link java.text.Normalizer.Form#NFD}. Applied to a
  * string that has not been decomposed, it leaves precomposed characters
  * untouched — there is nothing to remove.
+ *
+ * <p>Iterates by {@code char} rather than by code point, so only combining
+ * marks in the Basic Multilingual Plane are removed; supplementary-plane
+ * combining marks (e.g. U+1D167, U+E0100) pass through unmodified, and the
+ * surrogate halves of any non-BMP text are left intact rather than corrupted.
  */
 public final class CombiningMarkNormalizer implements StringNormalizer {
 

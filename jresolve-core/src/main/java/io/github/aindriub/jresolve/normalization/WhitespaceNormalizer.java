@@ -6,7 +6,7 @@ package io.github.aindriub.jresolve.normalization;
  */
 public final class WhitespaceNormalizer implements StringNormalizer {
 
-    private static final char NON_BREAKING_SPACE = ' ';
+    private static final char NON_BREAKING_SPACE = '\u00A0';
     private static final char SPACE = ' ';
 
     @Override

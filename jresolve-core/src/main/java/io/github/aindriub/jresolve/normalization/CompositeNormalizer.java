@@ -24,13 +24,6 @@ public final class CompositeNormalizer implements StringNormalizer {
         this.stages = Collections.unmodifiableList(copy);
     }
 
-    /**
-     * Returns the stages of this pipeline, in application order.
-     */
-    public List<StringNormalizer> getStages() {
-        return stages;
-    }
-
     @Override
     public String normalize(String value) {
         if (value == null) {

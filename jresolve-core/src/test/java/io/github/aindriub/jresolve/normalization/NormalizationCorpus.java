@@ -8,7 +8,7 @@ import java.util.List;
  * A fixed, synthetic corpus of strings shared by the normalization property
  * tests. Covers Latin-1 diacritics, apostrophe variants, mixed whitespace
  * (tabs, a non-breaking space, runs of plain spaces) and punctuation. No
- * entry is drawn from a real person, address or dataset.
+ * entry is drawn from real data.
  */
 final class NormalizationCorpus {
 
@@ -20,7 +20,7 @@ final class NormalizationCorpus {
             "façade",
             "  leading and trailing  ",
             "tab\tseparated",
-            "non breaking space",
+            "non\u00A0breaking\u00A0space",
             "multiple   spaces",
             "O'Brien",
             "O’Brien",
