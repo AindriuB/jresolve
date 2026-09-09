@@ -30,6 +30,29 @@ layers compose.
 - [ ] Running the same resolve twice returns equal decisions, scores and candidate ordering.
 - [ ] `mvn clean verify` passes at the tip of this branch, and the close-out reports the observed test count and the commit it was measured on.
 
+## Note carried from wave 4 (task 07) — two gaps only this task can close
+
+These do not change or add to the acceptance criteria above; they are context
+for writing the fixtures and scenarios.
+
+- **Determinism across shuffled candidate order has no persisted test
+  anywhere in the repository.** Task 07's tester probed it directly for
+  attempt 2 (20 shuffles of a four-candidate list against a fixed source;
+  decision and match identical every time) and it holds today, but nothing
+  would fail the build if it broke — the probe was ad hoc, not committed.
+  §96 makes determinism a hard requirement, and this task, as the end-to-end
+  gate, is where a persisted test belongs: run one resolve, shuffle the
+  candidate collection, run it again, assert equal decision, match and
+  ordering.
+- **The `.thresholds(...)` same-instance contract (see `PLAN.md`'s Known
+  gaps, task 07/D6) is enforced by nothing but documentation**, and this
+  task's fixtures are the first real wiring where a violation would surface.
+  Build the resolver's `ThresholdDecisionEngine` and its `.thresholds(...)`
+  call from the *same* `DecisionThresholds` instance, and add an explicit
+  assertion that doing so produces the correct decision — this both follows
+  the documented contract and is the only test in the milestone that checks
+  the contract is followable.
+
 ## Out of scope
 - Any change under `jresolve-core/src/main/java/**` — if a scenario cannot be expressed, report the missing capability as a successor task rather than editing another task's files.
 - Blocking, `CandidateIndex`, Fellegi-Sunter, logistic regression, and any profile-module fixture.

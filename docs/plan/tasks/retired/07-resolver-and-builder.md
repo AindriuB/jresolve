@@ -139,3 +139,41 @@ fields as `MISSING_BOTH`.
 - `DefaultEntityResolverTest.java:276` - the eight "distinct sources" in the
   concurrency test are value-identical, so a shared-state bug keyed on values
   would not show. Make them differ.
+
+## Attempt 2 - passed
+
+Tester PASS (251 tests; determinism re-probed directly with 20 shuffles of a
+four-candidate list against a fixed source, decision and match identical every
+time). Reviewer APPROVE. Commit `4e9c7fd` closed defects 2 and 3 in code and
+left defect 1 open by design.
+
+**Defect 2 - closed.** `.rule(null)` now fails `build()` alongside the other
+nulls, verified by the same one-test-per-case pattern as the rest of §98's list.
+
+**Defect 3 - closed by documentation, not enforcement.** `.required(fieldName)`
+is now Javadoc'd as metadata only, naming `RuleBasedScorer.Builder#requiredField`
+as the mechanism that actually enforces required fields. The reviewer judged
+this correct over enforcing it a second time in the resolver: two enforcement
+paths for one concept would diverge in semantics. `FieldDefinition.isRequired()`
+remains set and unread — flagged for milestone 2 in `PLAN.md`'s Known gaps.
+
+**Defect 1 - deliberately not closed.** The reviewer checked the obvious fix —
+have the builder construct the engine from the thresholds it just validated —
+and refuted it: `MatchDecisionEngine` is an interface callers must be able to
+supply their own implementation of, `.decisionEngine(...)` is itself an
+acceptance criterion, and `ThresholdDecisionEngine.thresholds` is private with
+no getter. Closing it properly means changing `decision/`, which this task does
+not own, and widening `Owns` was ruled out. What shipped is the Javadoc contract
+from attempt 1 (pass the exact same `DecisionThresholds` instance to both the
+engine's constructor and `.thresholds(...)`), plus an explicit statement in the
+Javadoc of the failure mode and why the library cannot detect it. Both tester
+and reviewer independently reproduced the hole (an engine holding PROBABILITY
+thresholds, a builder validated against a scale-matching POINTS object,
+`resolve()` returning MATCH by comparing a 10.0-point score to a 0.9 probability
+threshold) and independently confirmed the documented discipline is sufficient
+to avoid it. This is not fully honoured D6: a documented contract is weaker than
+a construction-time exception, and the gap is recorded in `PLAN.md`'s Known
+gaps for milestone 2 (`MatchDecisionEngine` should expose its scale).
+
+Merged to `main` in wave 4's close-out. Union build: 251 tests, `BUILD SUCCESS`,
+no overlap with the 229-test baseline at wave 3's close.

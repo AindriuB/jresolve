@@ -3,6 +3,67 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-09 — Resolver and builder land (task 07)
+
+`jresolve-core` gains `api/`: `EntityResolver`, `CandidateRule`/`RuleDecision`,
+`EntityResolverBuilder`, and the package-private `DefaultEntityResolver` that
+wires 05's `field/`, 06's `scoring/` and `decision/` together — prepare the
+source once per `resolve()`, compare fields in ascending cost tiers, run hard
+`CandidateRule` vetoes between tiers with short-circuit, hand ranked
+candidates to the decision engine. `EntityResolverBuilder.build()` rejects
+every configuration error `§98` names, throwing
+`EntityResolutionConfigurationException` with a message naming the field or
+constraint. Union build on `main`: `mvn clean verify`, `BUILD SUCCESS`, 251
+tests, exit 0 — exactly the 229-test baseline plus 22 new, no overlap.
+
+**Cost:** Two attempts. Attempt 1 passed testing (250 tests) and was rejected
+on review for three defects that were all the same shape: a guard that does
+not guard. A D6 scale check validating an object with no runtime effect;
+`.rule(null)` accepted and silently discarded while every other null failed
+`build()`; `.required(fieldName)` setting a flag nothing in the library reads.
+Attempt 2 closed two of the three in code and left the third open by design.
+
+The D6 hole is real, open, and now documented rather than fixed:
+`EntityResolverBuilder` validates the `DecisionThresholds` passed to
+`.thresholds(...)` against the scorer's scale, but that object never reaches
+the engine that actually decides — the engine decides using whatever
+thresholds it was constructed with. A caller who passes one
+`DecisionThresholds` instance to `new ThresholdDecisionEngine<>(...)` and a
+different, scale-matching instance to `.thresholds(...)` gets a clean
+`build()` and silently wrong decisions at `resolve()`. Both the tester and
+the reviewer reproduced it concretely: an engine holding PROBABILITY
+thresholds (0.9/0.5/0.2) with a scale-matching POINTS object passed to the
+builder builds cleanly, and `resolve()` then returns MATCH by comparing a
+10.0-point score against a 0.9 probability threshold.
+
+It was not fixed inside `api/` because it cannot be. The reviewer checked the
+obvious alternative — build the engine from the thresholds the builder just
+validated — and refuted it: `MatchDecisionEngine` is an interface callers
+must be able to implement themselves, `.decisionEngine(...)` is itself an
+acceptance criterion, and `ThresholdDecisionEngine.thresholds` is private
+with no getter. Fixing it means changing `decision/`, which task 07 does not
+own, and widening `Owns` to fix it was explicitly ruled out. What shipped
+instead is a Javadoc contract on `.thresholds(...)`: pass the exact same
+instance used to construct the engine, plus a stated failure mode and why the
+library cannot detect a violation. Both agents independently confirmed the
+contract is sufficient — following it closes the hole entirely — but a
+documented contract is weaker than a construction-time exception, and the
+library still ships with a way to be silently wrong that only discipline
+prevents. Recorded honestly in `PLAN.md`'s Known gaps for milestone 2:
+`MatchDecisionEngine` should expose its scale so the check can inspect the
+object that actually decides.
+
+This is the third time this milestone the same failure mode has recurred
+across independent probes: a byte scan for `C2 A0` proved the NBSP class
+clean but was read as proving the invisible-character class was (task 03); a
+probe of `getMargin()` on valid constructions could not reach the malformed
+ones it was meant to guard (task 04); here, a tester confirming the D6
+exception fires while the reviewer found it guards nothing it is wired to. In
+every case the measurement was correct and the sentence describing it was
+wider than the measurement. The counter is not "does the mechanism work" but
+"is it wired to anything" — worth carrying into every future review round in
+this project, not just this milestone's.
+
 ## 2026-09-09 — Field layer, scoring and decision land (tasks 05, 06)
 
 `jresolve-core` gains `field/` (task 05) and `scoring/` + `decision/` (task

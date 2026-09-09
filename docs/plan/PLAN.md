@@ -30,19 +30,19 @@ tasks, four waves. Wave order below reflects dependency edges recorded in
   engine, threshold/margin validation at `build()`. Merged on first attempt;
   see `docs/plan/HISTORY.md`.
 
-- [ ] **07 — Resolver and builder.** `EntityResolver`, its builder, candidate
-  cost-ordering and short-circuit. Unblocked — 05, 06 both merged. Wave 4,
-  next.
+- [x] **07 — Resolver and builder.** `EntityResolver`, its builder, candidate
+  cost-ordering and short-circuit. Merged after 2 attempts; see
+  `docs/plan/HISTORY.md`.
 
 - [ ] **08 — End-to-end test.** Full-pipeline test exercising resolver against
-  a synthetic fixture. Blocked on 07. Wave 5, after it.
+  a synthetic fixture. Unblocked — 05, 06, 07 all merged. Wave 5, last, next.
 
 ## Notes for implementers
 
 - `jresolve-core` build needs a JDK 17 toolchain on the building machine —
   `~/.m2/toolchains.xml`, not part of the repo. See
   `docs/architecture.md#building`.
-- `mvn clean verify` baseline at wave 3's close (01-06 merged) is 229 tests,
+- `mvn clean verify` baseline at wave 4's close (01-07 merged) is 251 tests,
   `BUILD SUCCESS`. Expect it to grow as later tasks land.
 
 ## Known gaps (non-blocking, no task owns these)
@@ -106,3 +106,36 @@ Raised in wave 3 (tasks 05, 06):
   `FieldComparatorNullSafetyTest` describes its own failure mode backwards,
   and `@SafeVarargs` on a reifiable `Object[]...` in
   `ThresholdDecisionEngineTest` (task 06) is redundant.
+
+Raised in wave 4 (task 07):
+
+- **D6 is not fully honoured.** `MatchDecisionEngine` exposes neither its
+  scale nor its thresholds, so `EntityResolverBuilder.build()`'s scale check
+  validates the `DecisionThresholds` passed to `.thresholds(...)` against the
+  scorer, but that object never reaches the engine that actually decides. A
+  caller who constructs `new ThresholdDecisionEngine<>(thresholdsA)` and then
+  calls `.thresholds(thresholdsB)` with a different, scale-matching instance
+  gets a clean `build()` and a resolver that silently interprets scores on
+  the wrong scale at `resolve()` — reproduced concretely as an engine holding
+  PROBABILITY thresholds (0.9/0.5/0.2) returning MATCH by comparing a
+  10.0-point score against 0.9. Task 07 could not fix this from `api/`:
+  `MatchDecisionEngine` must stay an interface callers can implement
+  themselves, `.decisionEngine(...)` is itself an acceptance criterion, and
+  `ThresholdDecisionEngine.thresholds` is private with no getter. What
+  shipped is a Javadoc contract (`.thresholds(...)` must be given the same
+  instance as the engine's constructor) that both the tester and reviewer
+  confirmed is sufficient when followed, but weaker than a construction-time
+  exception. Milestone 2 should give `MatchDecisionEngine` a way to expose
+  its scale (and ideally its thresholds) so `build()` can inspect the object
+  that actually decides.
+- `DefaultEntityResolver`'s constructor still has a branch silently skipping
+  null rules, now dead now that `build()` rejects them before construction.
+  Package-private, only reachable through the builder — cosmetic, but
+  misleading to a later reader who assumes the branch is live.
+- `FieldDefinition.isRequired()`, set by `EntityResolverBuilder.required(...)`,
+  is read by nothing; `RuleBasedScorer.Builder#requiredField(String)` is the
+  mechanism that actually enforces required fields. Task 07 documented rather
+  than enforced this deliberately — enforcing it a second time in the
+  resolver would give one concept two mechanisms with different semantics —
+  but the flag lives in `field/` (task 05's file) and a later milestone
+  should decide whether it earns its place or should be removed.
