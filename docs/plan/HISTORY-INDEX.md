@@ -20,4 +20,4 @@ no row is one `planner` cannot find, and will re-plan.
 
 | Date | Task IDs | Summary | Heading (grep this exact string) |
 |---|---|---|---|
-_No entries yet._
+| 2026-09-09 | 01 | Reactor build stood up: core + profiles-ie modules, JDK 17 toolchain, `release=8`, non-skippable animal-sniffer `java18` gate, JUnit 5 + AssertJ | 2026-09-09 — Maven multi-module build skeleton lands (task 01) |

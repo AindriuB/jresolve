@@ -32,6 +32,29 @@ country. `FieldPipeline`, `SimilarityMetric` and `ComparisonCategory` are
 generic; `irishName()` lives in the profiles module. This is checkable in a diff
 and the reviewer checks it.
 
+## Building
+
+The build compiles on JDK 17, pinned by `maven-toolchains-plugin`; JDK 8 is
+unsupported for building even though 8 is the compilation target. This needs a
+`toolchains.xml` on the machine — it is not part of the repo and does not
+arrive with a clone. Create `${user.home}/.m2/toolchains.xml` naming an
+installed JDK 17 before running `mvn verify`, for example:
+
+```xml
+<toolchains>
+  <toolchain>
+    <type>jdk</type>
+    <provides><version>17</version></provides>
+    <configuration><jdkHome>/path/to/jdk-17</jdkHome></configuration>
+  </toolchain>
+</toolchains>
+```
+
+Without a matching `toolchains.xml`, the build fails with "Cannot find
+matching toolchain definitions" rather than silently falling back to whatever
+JDK is running Maven. Maven itself can run on any JDK 9+ (enforced by
+`maven-enforcer-plugin`); only compilation is pinned to 17.
+
 ## The pipeline
 
 ```
