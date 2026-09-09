@@ -44,3 +44,49 @@ they freeze the shape tasks 05, 06 and 07 build against.
 - `MatchScorer`, `DecisionThresholds`, any scoring or decision logic — task 06.
 - The `diagnostics(true)` opt-in from D10 and any explanation rendering.
 - Fellegi-Sunter model types, `TermFrequencyTable`, `AliasRepository`.
+
+## Attempt 1 - failed
+
+Tester PASS (48 tests; defensive copies, interning and the privacy boundary all
+verified by probe rather than assertion), reviewer CHANGES. Two defects, both in
+`MatchResult`, both about states the type permits rather than states a
+well-behaved caller reaches - which is why probing did not find them and reading
+did.
+
+**Defect 1 - must fix.** `MatchResult.java:42` -
+`new MatchResult<>(Decision.NO_MATCH, candidate, ...)` builds a result where
+`isMatch()` is false while `getMatch()` returns non-null, contradicting the
+getter's own Javadoc. A consumer trusting that Javadoc uses a candidate it must
+not use. Enforce the invariant in the constructor. D12 removed the redundant
+`matched` field precisely so this state could not disagree with itself; leaving
+the rule as documentation reinstates the same disagreement one indirection away,
+and task 06 is about to become the caller that can violate it.
+
+**Defect 2 - must fix.** `MatchResult.java:104` - `getMargin()` guards on
+`secondBestScore` but dereferences `score`, so a result constructed with a
+second-best score and no best score throws `NullPointerException` instead of the
+documented `IllegalStateException`. Closing defect 1 in the constructor may make
+this unreachable; the guard should still be correct rather than accidentally
+unreachable.
+
+**Settled - no change.** Throwing from `getMargin()` when there is no second best
+is right, and the orchestrator's doubt about it was wrong. `Double` or
+`OptionalDouble` reintroduces exactly the boxing-then-arithmetic risk D6 objected
+to, docs/conventions.md warns against `Optional` in the core API, and task 06
+checks `hasSecondBest()` once per result rather than per call.
+
+**Settled - keep, and add a test.** Excluding `C` from every `toString()` because
+a consumer type's own `toString()` could leak a field value is the correct
+reading of the privacy boundary, applied consistently across both types that hold
+a `C`. But no test asserts it, so a later edit can undo it silently - the
+protection currently rests on a comment. Add the assertion the tester wrote as a
+probe: a candidate whose `toString()` returns a sentinel, asserted absent from
+`MatchResult.toString()` and `ScoredCandidate.toString()`.
+
+**Suggestions.**
+- `ComparisonCategory.java:53` - `trim()` validates but the untrimmed name is the
+  intern key, so `of(" HIGH ")` mints a category distinct from `HIGH`. Since
+  categories key every scoring model, two categories differing by whitespace is a
+  silent scoring bug.
+- `MatchEvidence.java:31` - null map values are accepted and print as "null" in
+  `toString()`, so `getField` cannot distinguish absent from present-but-null.
