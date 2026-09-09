@@ -82,3 +82,49 @@ entry is drawn from real data" says the same thing without the tripwire.
 characters and the tester confirmed every byte decodes as intended. The rule that
 falls out: a literal a reader can *see* may stay literal; one that is invisible
 by definition gets an escape.
+
+## Attempt 2 - failed
+
+Tester PASS (57 tests; the NBSP escape now bites - replacing it with a plain
+space fails a named test, where under attempt 1 that mutation was invisible),
+reviewer CHANGES. The four items from attempt 1 are all correctly closed. A
+fifth instance of the same defect was found.
+
+**Defect - must fix.** `UnicodeFormNormalizerTest.java:37` builds
+`String decomposed = "e" + <combining acute U+0301>` with a raw invisible
+character rather than an escape. It renders as an accented e, visually identical
+to the precomposed character on line 41, so a reader cannot tell the two-char
+input from the one-char expectation. Any pass that NFC-normalizes the source
+rewrites it to precomposed, and `nfcRecomposesADecomposedCharacter` then asserts
+that a precomposed character normalizes to itself - green, vacuous, and the NFC
+arm untested. Write `"e\u0301"`, or build the input with
+`Normalizer.normalize(..., NFD)` the way `CombiningMarkNormalizerTest` lines 19
+and 36 already do. Either closes it.
+
+**Why this keeps happening, and what it means for attempt 3.** The count so far:
+review found two, the implementer generalised and found a third, this review
+found a fifth. The tester's byte scan reported zero remaining raw NBSP bytes and
+was correct - it searched for `C2 A0`, the sequence it was given. The combining
+acute is `CC 81` and was never in scope of that scan. So "the NBSP class is
+clean" was proven; "the invisible-character class is clean" was not, and the two
+read identically in a summary.
+
+Attempt 3 must scan for the class, not the instance: every non-ASCII byte
+sequence in the package's committed sources, each one either visible in its
+context or escaped. Report the full list with a verdict per entry, so the next
+reader can see what was considered rather than what was found.
+
+**Settled, do not undo.** The apostrophe raw literals stay - the tester
+confirmed all five decode correctly and the Javadoc names each code point beside
+them. Deleting `CompositeNormalizer.getStages()` cost no real coverage: with the
+accessor gone the `unmodifiableList` wrapper is unreachable from outside, so the
+deleted test asserted an unobservable property, and the rewritten test does fail
+when the defensive copy is removed. The BMP-limit Javadoc and the corpus
+disclaimer rewording are both accepted.
+
+**Not this task's to fix.** The rule being applied here - a literal a reader can
+see may stay literal, an invisible one gets an escape - is written down nowhere
+in the repo. It has survived only in these review notes, which is why it was
+applied four times and missed a fifth. It belongs in docs/conventions.md, which
+is outside this task's `Owns`. Filed separately; do not edit that file from this
+branch.

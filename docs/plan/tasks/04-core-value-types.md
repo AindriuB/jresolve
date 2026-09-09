@@ -90,3 +90,51 @@ probe: a candidate whose `toString()` returns a sentinel, asserted absent from
   silent scoring bug.
 - `MatchEvidence.java:31` - null map values are accepted and print as "null" in
   `toString()`, so `getField` cannot distinguish absent from present-but-null.
+
+## Attempt 2 - failed
+
+Tester PASS (53 tests; 24-combination construction matrix, zero NPEs, privacy
+sentinel tests confirmed non-vacuous), reviewer CHANGES. Both enumerated defects
+were addressed, but the first was closed in one direction only.
+
+**Defect 1 - must fix.** `MatchResult.java:39` rejects `REVIEW`/`NO_MATCH`
+carrying a candidate, but `new MatchResult<>(Decision.MATCH, null, score, null,
+list)` is still accepted. `isMatch()` then returns true while `getMatch()`
+returns null, and a consumer following the documented `isMatch()` then
+`getMatch()` path gets an NPE. This is the same self-disagreeing state D12
+removed the `matched` field to prevent, and enforcing only the `match != null`
+half implies the null half was considered legal. The tester's matrix states it as
+data: 8 of 24 combinations are rejected, and all 8 are `match != null` with a
+non-MATCH decision.
+
+Note why the tester reported zero NPEs and was still right - `getMatch()`
+returning null does not throw. The NPE lands in the consumer that trusted the
+contract, which is not reachable from a probe of these types alone.
+
+**Defect 2 - must fix.** `new MatchResult<>(NO_MATCH, null, null, secondBest,
+list)` is still constructible: a runner-up with no leader. `hasSecondBest()`
+returns true, so `getMargin()` throws `IllegalStateException` while its own
+`@throws` at line 99 says it throws only when `hasSecondBest()` is false, and the
+message misstates the cause. Attempt 2's guard stopped the NPE without rejecting
+the illegal state where it is created. Reject `secondBestScore != null && score
+== null` in the constructor and leave line 102 as the defensive backstop it
+already reads as. The tester independently noticed this state and filed it as
+"logically odd, not in scope"; the reviewer is right that it is a defect.
+
+**Also.** `MatchResult.java:22-24` - the constructor Javadoc still says the
+candidate "should" be null unless the decision is MATCH. It is now enforced, so
+say "must", and state the converse once the sibling case above is closed.
+
+**Settled, do not undo.** `getMargin()` throws rather than returning a sentinel
+or an Optional. `C` stays excluded from every `toString()`, and the sentinel
+tests protecting that are confirmed non-vacuous - adding the candidate back to
+either `toString()` fails them. The `ComparisonCategory` trim fix is complete and
+verified by reflection into the intern map: exactly one `HIGH` key, no
+whitespace-variant duplicate. `MatchEvidence` null-value rejection works without
+conflating a rejected null value with an absent field.
+
+**For attempt 3, state the legal set explicitly.** Do not fix the two cases named
+above one at a time. Write down which of the 24 combinations of decision, match,
+score and second-best score are legal, enforce exactly that set in the
+constructor, and let the tester's matrix confirm accepted equals legal. Fixing
+enumerated instances is what produced two rounds of siblings.
