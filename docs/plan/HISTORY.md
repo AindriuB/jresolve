@@ -3,6 +3,102 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-09 — Milestone 1 complete: end-to-end resolve proven, gaps recorded (task 08)
+
+`jresolve-core` gains `endtoend/`: an `EndToEndResolutionTest` that builds one
+`EntityResolver` from a consumer's seat — synthetic `ExternalPerson`/`Owner`
+fixtures, four fields across two cost tiers, `RuleBasedScorer` on the POINTS
+scale, `ThresholdDecisionEngine` — and asserts a positive `MATCH`, a negative
+`NO_MATCH`, an ambiguous `REVIEW` on a small non-zero margin, a cheap-field
+veto short-circuit (asserting the expensive field's preparer was never
+invoked for the vetoed candidate), `MISSING_ONE` evidence distinct from
+`CONFLICT`, determinism under shuffled candidate order, determinism under
+tied scores through the stable sort, and the `.thresholds(...)` same-instance
+contract from task 07's known D6 gap. This closes milestone 1: all eight
+planned tasks are now merged to `main`. Union build: `mvn clean verify`,
+`BUILD SUCCESS`, 262 tests, exit 0, commit `9bd38c4`.
+
+**Cost:** Two attempts. Attempt 1 tested PASS with 260 tests — all three of
+its documented gap claims independently recomputed and accurate, the
+determinism test genuinely fails when ranking is made order-dependent, both
+thresholds-contract tests distinguish compliance from violation — but was
+rejected for two documentation defects, not code faults. First, the address
+assertion derived MEDIUM as plain arithmetic and never said §88 expects
+VERY_HIGH (same omission for firstName against ALIAS); a reader would take
+the passing MEDIUM assertion as evidence MEDIUM is correct rather than a
+known gap. Second, the class Javadoc said "the other three fields carry it,"
+which understates what actually decides the positive scenario: lastName
+EXACT (30) plus dateOfBirth EXACT (25) reach 55 against a match threshold of
+50 on their own, so the positive scenario would pass as a two-exact-key SQL
+join, and the fuzzy fields are not load-bearing.
+
+Attempt 2 fixed both with documentation only. Verified by diff: one file,
++120/−5, and every weight, threshold, band and fixture literal byte-identical
+to attempt 1. That mattered — the tempting wrong fix was to reweight until
+the fuzzy fields looked load-bearing, producing a green suite that
+misrepresents the library. Three mutation checks proved the new assertions
+are not decorative: widening firstName's band to MEDIUM and narrowing
+address to LOW while holding the total at exactly 65.0 — the change attempt
+1 would have passed silently — failed
+`positiveScenarioMatchesTheBestScoringCandidate`, so the per-field
+`FieldContribution` assertions earn their place; reversing the ranked list
+before the stable sort failed `tiedCandidatesKeepTheirInputOrderUnderTheStableSort`
+by name; and changing the margin comparison to `margin != 0.0` left the
+zero-margin tie test passing while the new non-zero-margin case failed,
+proving the two margin tests exercise different branches rather than the
+same degenerate path.
+
+**The milestone assessment, from the reviewer.** Does milestone 1 give a
+consumer reason to believe the library works? For composition: yes — builder
+wiring, cost-tier ordering, the cheap-field veto short-circuit, missing-
+versus-conflict evidence, threshold and margin decisioning, and determinism
+across shuffled order and under ties are all genuinely exercised end to end.
+For resolution quality: no — every positive outcome is carried by exact
+surname and exact date of birth, the two columns a plain SQL join would
+match on. The fuzzy first name is a penalty of −5 because `Seán`/`John`
+scores LOW with no alias repository; the address contributes MEDIUM where
+§88 expects VERY_HIGH, because generic Levenshtein on a normalized string is
+not an address pipeline. The suite now says this in its own Javadoc rather
+than leaving a reader to infer it. The one advance:
+`ambiguousScenarioReturnsReviewOnASmallNonZeroMarginBelowTheMinimum` is the
+first place a fuzzy field decides anything — an address similarity band is
+the sole differentiator between two candidates. It decides ranking, not
+whether a match exists. **D7 (alias equivalence groups) and D9 (address
+subsumption) are not polish. They are the gap between "the pieces compose"
+and "a consumer gets a better answer than a join."** That sentence should
+survive into the milestone-2 planning notes.
+
+Left for the next touch, recorded in `PLAN.md`'s Known gaps rather than
+fixed here: a garbled sentence at `EndToEndResolutionTest.java:67-69` that
+attributes the +10 net to "the two exact-match fields" when it is actually
+firstName (−5) and address (+15); the tied-scores determinism test uses only
+two candidates where three or four would exercise the stable-sort claim
+properly; the positive test pins `FieldContribution` categories but not
+values; and the address field's generic string comparator will need
+re-pointing at the real address pipeline once D9 exists.
+
+**Milestone 1 close-out.** All eight tasks are merged: Maven build skeleton,
+similarity metrics, normalization primitives, core value types, field layer,
+scoring and decision, resolver and builder, and this end-to-end proof. What
+shipped is a Java 8 entity-resolution library with typed field extraction,
+two-phase normalization, Jaro-Winkler/Levenshtein/token similarity, an open
+comparison-category model, cost-tiered comparison with rule vetoes,
+rule-based scoring on a declared score scale, threshold-and-margin
+decisioning, and an explainable ranked result — verified end to end. What
+did not ship: no alias repository, no address pipeline, no blocking or
+candidate index, no Fellegi-Sunter, no logistic regression, no Irish
+profiles — `jresolve-profiles-ie` is still an empty module skeleton.
+
+The recurring verification lesson across this milestone, seen four times: a
+correct measurement can support a claim broader than it earned. The `C2 A0`
+byte scan that proved the NBSP class clean while reading as proof about
+invisible characters generally (task 03); the `getMargin()` probe that could
+not reach malformed constructions (task 04); the D6 check that fires
+correctly while guarding nothing (task 07); and this task's attempt 1, whose
+numbers were right while the record around them was not. The
+counter-question to ask of any green test is "is it wired to anything," not
+"does it work."
+
 ## 2026-09-09 — Resolver and builder land (task 07)
 
 `jresolve-core` gains `api/`: `EntityResolver`, `CandidateRule`/`RuleDecision`,

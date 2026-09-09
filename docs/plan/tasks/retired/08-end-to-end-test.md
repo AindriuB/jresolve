@@ -124,3 +124,44 @@ resolution quality, no - every positive outcome is carried by exact surname and
 exact date of birth, the two fields a plain SQL join would match on. Milestone
 2's D7 and D9 are not polish; they are the gap between "the pieces compose" and
 "a consumer gets a better answer than a join".
+
+## Attempt 2 - passed
+
+Tester PASS (262 tests). Reviewer APPROVE. Fixed both attempt-1 defects with
+documentation only, verified by diff: one file, +120/-5, every weight,
+threshold, band and fixture literal byte-identical to attempt 1. The address
+assertion now states that §88 expects VERY_HIGH where the suite gets MEDIUM
+from generic Levenshtein on a normalized string, naming D9 as the closing
+feature; the firstName assertion states that §88 expects ALIAS where the
+suite gets LOW, naming D7. The class Javadoc no longer says "the other three
+fields carry it" - it now says plainly that lastName EXACT (30) plus
+dateOfBirth EXACT (25) reach 55 against a match threshold of 50 on their own,
+and that the positive scenario would pass as a two-exact-key join.
+
+Three mutation checks proved the new assertions are not decorative:
+- Widening firstName's band to MEDIUM and narrowing address to LOW while
+  holding the total at exactly 65.0 - the change attempt 1 would have passed
+  silently - failed `positiveScenarioMatchesTheBestScoringCandidate`. The
+  per-field `FieldContribution` assertions earn their place.
+- Reversing the ranked list before the stable sort failed
+  `tiedCandidatesKeepTheirInputOrderUnderTheStableSort` by name.
+- Changing the margin comparison to `margin != 0.0` left the zero-margin tie
+  test passing while the new non-zero-margin case failed, proving the two
+  margin tests exercise different branches rather than the same degenerate
+  path.
+
+**Left for the next touch, not blocking.** `EndToEndResolutionTest.java:67-69`
+carries a garbled sentence: it says the two exact-match fields net +10, when
+it is firstName (-5) and address (+15) that net +10 - lastName and
+dateOfBirth net 55, as the preceding sentence correctly says. The paragraph's
+conclusion is right; one sentence contradicts its neighbour. Also: the tied-
+scores determinism test uses only two candidates, and an unstable sort would
+rarely swap exactly two - three or four tied candidates would exercise the
+stable-sort claim properly; the positive test pins `FieldContribution`
+categories but not contribution values, so a weight change with unchanged
+bands still relies on the total assertion; and the address field points at a
+generic string comparator that will need re-pointing at the real address
+pipeline once D9 exists.
+
+Merged to `main` in the milestone 1 close-out. Union build: 262 tests, `BUILD
+SUCCESS`, commit `9bd38c4`.
