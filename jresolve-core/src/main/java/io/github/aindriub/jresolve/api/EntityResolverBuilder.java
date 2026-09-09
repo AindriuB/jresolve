@@ -144,10 +144,16 @@ public final class EntityResolverBuilder<S, C> {
     }
 
     /**
-     * Marks the named field required, per {@link
-     * io.github.aindriub.jresolve.field.FieldDefinition#isRequired()}.
-     * Validated at {@link #build()}: a name matching no configured field
-     * fails the build.
+     * Marks the named field required. This only sets {@link
+     * io.github.aindriub.jresolve.field.FieldDefinition#isRequired()}; the
+     * resolver itself does not read that flag, so marking a field required
+     * here has no effect on its own. It is metadata for a scorer to
+     * consult — {@link io.github.aindriub.jresolve.scoring.RuleBasedScorer}
+     * enforces requiredness through its own, separate mechanism, {@link
+     * io.github.aindriub.jresolve.scoring.RuleBasedScorer.Builder#requiredField(String)},
+     * which must be configured independently for a missing field to make a
+     * candidate unscorable. Validated at {@link #build()}: a name matching
+     * no configured field fails the build.
      */
     public EntityResolverBuilder<S, C> required(String fieldName) {
         requiredFieldNames.add(fieldName);
@@ -157,6 +163,8 @@ public final class EntityResolverBuilder<S, C> {
     /**
      * Adds a hard veto evaluated between cost tiers. Rules run in the order
      * they were added.
+     *
+     * @param rule must not be null; a null rule fails {@link #build()}
      */
     public EntityResolverBuilder<S, C> rule(CandidateRule<S, C> rule) {
         rules.add(rule);
@@ -177,6 +185,19 @@ public final class EntityResolverBuilder<S, C> {
      * The thresholds {@link #build()} checks against the configured
      * scorer's {@link MatchScorer#scale()} (D6): a mismatch fails the build
      * rather than misinterpreting a score at {@code resolve()} time.
+     *
+     * <p><strong>Contract, not enforcement:</strong> {@link
+     * MatchDecisionEngine} exposes neither the thresholds nor the scale it
+     * was actually constructed with, so this check inspects only the {@code
+     * DecisionThresholds} instance passed here — it cannot see what the
+     * {@code decisionEngine(...)} you configured is really using at {@code
+     * resolve()} time. The instance passed to this method must therefore be
+     * the exact same instance (or an equivalent one built to the same
+     * scale) that was used to construct the {@code MatchDecisionEngine}
+     * passed to {@link #decisionEngine}; if they diverge, {@code build()}
+     * can pass while {@code resolve()} interprets scores against the wrong
+     * scale. There is no in-library way to prevent that divergence until
+     * {@code MatchDecisionEngine} exposes its own scale.
      */
     public EntityResolverBuilder<S, C> thresholds(DecisionThresholds thresholds) {
         this.thresholds = thresholds;
@@ -225,6 +246,12 @@ public final class EntityResolverBuilder<S, C> {
             if (!seenNames.contains(name)) {
                 throw new EntityResolutionConfigurationException(
                         "required configured for unknown field: '" + name + "'");
+            }
+        }
+
+        for (int i = 0; i < rules.size(); i++) {
+            if (rules.get(i) == null) {
+                throw new EntityResolutionConfigurationException("rule at index " + i + " must not be null");
             }
         }
 

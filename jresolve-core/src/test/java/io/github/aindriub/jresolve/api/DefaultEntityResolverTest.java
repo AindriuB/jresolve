@@ -88,20 +88,34 @@ class DefaultEntityResolverTest {
 
     @Test
     void sourceIsPreparedExactlyOnceAcrossFiftyCandidates() {
-        AtomicInteger sourceInvocations = new AtomicInteger();
-        AtomicInteger candidateInvocations = new AtomicInteger();
-        Function<TwoFieldSource, String> countingSourceGetter = s -> {
-            sourceInvocations.incrementAndGet();
+        AtomicInteger cheapSourceInvocations = new AtomicInteger();
+        AtomicInteger cheapCandidateInvocations = new AtomicInteger();
+        AtomicInteger expensiveSourceInvocations = new AtomicInteger();
+        AtomicInteger expensiveCandidateInvocations = new AtomicInteger();
+        Function<TwoFieldSource, String> countingCheapSourceGetter = s -> {
+            cheapSourceInvocations.incrementAndGet();
             return s.getCheapValue();
         };
-        Function<TwoFieldCandidate, String> countingCandidateGetter = c -> {
-            candidateInvocations.incrementAndGet();
+        Function<TwoFieldCandidate, String> countingCheapCandidateGetter = c -> {
+            cheapCandidateInvocations.incrementAndGet();
             return c.getCheapValue();
+        };
+        Function<TwoFieldSource, String> countingExpensiveSourceGetter = s -> {
+            expensiveSourceInvocations.incrementAndGet();
+            return s.getExpensiveValue();
+        };
+        Function<TwoFieldCandidate, String> countingExpensiveCandidateGetter = c -> {
+            expensiveCandidateInvocations.incrementAndGet();
+            return c.getExpensiveValue();
         };
 
         EntityResolver<TwoFieldSource, TwoFieldCandidate> resolver = EntityResolverBuilder
                 .<TwoFieldSource, TwoFieldCandidate>builder()
-                .field("cheap", countingSourceGetter, countingCandidateGetter, exactStringPipeline())
+                .field("cheap", countingCheapSourceGetter, countingCheapCandidateGetter, exactStringPipeline())
+                .cost("cheap", CostTiers.CHEAP)
+                .field("expensive", countingExpensiveSourceGetter, countingExpensiveCandidateGetter,
+                        exactStringPipeline())
+                .cost("expensive", CostTiers.EXPENSIVE)
                 .scorer(basicScorer())
                 .thresholds(basicThresholds())
                 .decisionEngine(new ThresholdDecisionEngine<>(basicThresholds()))
@@ -115,9 +129,12 @@ class DefaultEntityResolverTest {
         resolver.resolve(new TwoFieldSource("value-0", "x"), candidates);
 
         // D2: the source is prepared once per resolve() call, not once per
-        // candidate — 50 candidates must not mean 50 source-side calls.
-        assertThat(sourceInvocations.get()).isEqualTo(1);
-        assertThat(candidateInvocations.get()).isEqualTo(50);
+        // candidate — 50 candidates must not mean 50 source-side calls, for
+        // either field.
+        assertThat(cheapSourceInvocations.get()).isEqualTo(1);
+        assertThat(cheapCandidateInvocations.get()).isEqualTo(50);
+        assertThat(expensiveSourceInvocations.get()).isEqualTo(1);
+        assertThat(expensiveCandidateInvocations.get()).isEqualTo(50);
     }
 
     @Test
@@ -272,10 +289,19 @@ class DefaultEntityResolverTest {
                 new TwoFieldCandidate("a", "b"), new TwoFieldCandidate("a", "c"));
 
         int threadCount = 8;
-        List<TwoFieldSource> sources = new ArrayList<>();
-        for (int i = 0; i < threadCount; i++) {
-            sources.add(new TwoFieldSource("a", "b"));
-        }
+        // Value-distinct sources, not just distinct objects: a mix of full
+        // matches, partial matches (tied to different candidates) and no
+        // matches, so a shared-state bug keyed on values would surface as a
+        // mismatch against the precomputed single-threaded expectation below.
+        List<TwoFieldSource> sources = Arrays.asList(
+                new TwoFieldSource("a", "b"),
+                new TwoFieldSource("a", "c"),
+                new TwoFieldSource("q", "b"),
+                new TwoFieldSource("q", "c"),
+                new TwoFieldSource("r", "r"),
+                new TwoFieldSource("s", "b"),
+                new TwoFieldSource("s", "c"),
+                new TwoFieldSource("t", "t"));
         List<Decision> expected = new ArrayList<>();
         List<TwoFieldCandidate> expectedMatches = new ArrayList<>();
         for (TwoFieldSource source : sources) {

@@ -190,6 +190,20 @@ class EntityResolverBuilderTest {
     }
 
     @Test
+    void buildThrowsForANullRule() {
+        EntityResolverBuilder<Source, Candidate> builder = EntityResolverBuilder.<Source, Candidate>builder()
+                .field("value", Source::getValue, Candidate::getValue, exactStringPipeline())
+                .rule(null)
+                .scorer(pointsScorer())
+                .thresholds(pointsThresholds())
+                .decisionEngine(new ThresholdDecisionEngine<>(pointsThresholds()));
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(EntityResolutionConfigurationException.class)
+                .hasMessageContaining("rule");
+    }
+
+    @Test
     void buildThrowsWhenThresholdsScaleDoesNotMatchScorerScale() {
         MatchScorer scorer = pointsScorer(); // ScoreScale.POINTS
         DecisionThresholds mismatched = new DecisionThresholds(0.5, 0.2, 0.05, ScoreScale.PROBABILITY);
