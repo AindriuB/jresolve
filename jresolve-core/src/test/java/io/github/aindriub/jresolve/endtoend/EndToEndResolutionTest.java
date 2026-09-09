@@ -57,10 +57,22 @@ import static org.assertj.core.api.Assertions.assertThat;
  * alias repository (D7) and no address comparison pipeline (D9) in the
  * merged code, so a source/candidate pair such as {@code "Seán"} and
  * {@code "John"} does not score as an alias match here — it falls through to
- * a low string-similarity band, exactly as an unrelated pair would. The
- * positive scenario below still resolves to {@code MATCH} because the other
- * three fields carry it, which is an honest demonstration of what this
- * library can do today, not a weakened stand-in for §88.
+ * a low string-similarity band, exactly as an unrelated pair would. §88
+ * expects {@code ALIAS} for that firstName pair and {@code VERY_HIGH} for the
+ * address pair below; this milestone produces {@code LOW} and {@code MEDIUM}
+ * instead, and closing that gap is D7's and D9's job, not this test's.
+ *
+ * <p><strong>What actually decides §88 today:</strong> lastName EXACT (30)
+ * plus dateOfBirth EXACT (25) already total 55, above the 50-point match
+ * threshold, before firstName or address contribute anything. Those two
+ * exact-match fields are the evidence §88 exists to demonstrate net +10
+ * between them; the fuzzy firstName comparison is a −5 penalty, not a
+ * contribution toward the match. In plain terms, the positive scenario below
+ * would pass as a two-exact-key join — the same outcome a plain SQL join on
+ * surname and date of birth would produce. That is an honest statement of
+ * where this library stands after milestone 1, not a weakened stand-in for
+ * §88; D7 (alias repository) and D9 (address pipeline) are what would make
+ * the fuzzy fields actually carry weight.
  */
 class EndToEndResolutionTest {
 
@@ -229,18 +241,46 @@ class EndToEndResolutionTest {
         // firstName: "sean" vs "john" (4 chars each) — Levenshtein edit
         // distance is 3 (three substitutions, "n" already matches), so
         // similarity = 1 - 3/4 = 0.25, below the 0.70 MEDIUM floor -> LOW (-5).
+        // §88 expects this pair to resolve as ALIAS; there is no alias
+        // repository (D7) in the merged code, so it falls through to a plain
+        // string-similarity band instead.
         // lastName: both normalize to "o'sullivan" -> EXACT (30).
         // dateOfBirth: both 1985-06-14 -> EXACT (25).
         // address: normalized source "12 main street dublin 4" (23 chars),
         // normalized candidate "12 main st dublin 4" (19 chars); deleting
         // "reet" from "street" turns one into the other, so distance = 4 and
         // similarity = 1 - 4/23 = 19/23 ~= 0.826, in [0.70, 0.85) -> MEDIUM (15).
+        // §88 expects VERY_HIGH here; there is no address comparison pipeline
+        // (D9) in the merged code, so this is plain Levenshtein similarity on
+        // normalized strings, not the address-aware match §88 illustrates.
         // total = -5 + 30 + 25 + 15 = 65
         assertThat(result.getDecision()).isEqualTo(Decision.MATCH);
         assertThat(result.getMatch()).isSameAs(strongCandidate);
         assertThat(result.getScore().getValue()).isEqualTo(65.0);
         assertThat(result.getScore().getScale()).isEqualTo(ScoreScale.POINTS);
         assertThat(rankedCandidates(result)).containsExactly(strongCandidate, distractor);
+
+        // Pin each field's category individually, not only the total: a
+        // future change that shifts two bands in opposite directions (e.g.
+        // firstName up a band and address down a band) could leave the total
+        // unchanged and pass silently without this.
+        List<FieldContribution> contributions = result.getCandidates().get(0).getContributions();
+        assertThat(contributions)
+                .filteredOn(c -> "firstName".equals(c.getField()))
+                .extracting(FieldContribution::getCategory)
+                .containsExactly(ComparisonCategory.LOW);
+        assertThat(contributions)
+                .filteredOn(c -> "lastName".equals(c.getField()))
+                .extracting(FieldContribution::getCategory)
+                .containsExactly(ComparisonCategory.EXACT);
+        assertThat(contributions)
+                .filteredOn(c -> "dateOfBirth".equals(c.getField()))
+                .extracting(FieldContribution::getCategory)
+                .containsExactly(ComparisonCategory.EXACT);
+        assertThat(contributions)
+                .filteredOn(c -> "address".equals(c.getField()))
+                .extracting(FieldContribution::getCategory)
+                .containsExactly(ComparisonCategory.MEDIUM);
     }
 
     @Test
@@ -294,6 +334,39 @@ class EndToEndResolutionTest {
     }
 
     @Test
+    void ambiguousScenarioReturnsReviewOnASmallNonZeroMarginBelowTheMinimum() {
+        // A companion to the exact 0.0 tie above: margin here is a small
+        // positive value still below minimumMargin (10.0), exercising the
+        // comparison as D9's address pipeline will eventually produce rather
+        // than only the degenerate exact-tie case.
+        ExternalPerson source = new ExternalPerson("John", "Murphy", LocalDate.of(1985, 6, 14),
+                Collections.singletonList("abcdefghij"));
+        // ownerHigh differs from the source address in one character
+        // (position 9, "i" -> "k") — same length, one substitution, so
+        // distance = 1, similarity = 1 - 1/10 = 0.9, in [0.85, 0.95) -> HIGH (20).
+        Owner ownerHigh = new Owner("owner-high", "John", "Murphy", LocalDate.of(1985, 6, 14), "abcdefghik");
+        // ownerMedium differs in two characters (positions 9 and 10,
+        // "ij" -> "kl") — same length, two substitutions, so distance = 2,
+        // similarity = 1 - 2/10 = 0.8, in [0.70, 0.85) -> MEDIUM (15).
+        Owner ownerMedium = new Owner("owner-medium", "John", "Murphy", LocalDate.of(1985, 6, 14), "abcdefghkl");
+
+        EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
+        MatchResult<Owner> result = resolver.resolve(source, Arrays.asList(ownerHigh, ownerMedium));
+
+        // firstName, lastName, dateOfBirth all agree exactly for both owners:
+        // EXACT + EXACT + EXACT = 35 + 30 + 25 = 90 for each.
+        // ownerHigh total = 90 + 20 = 110. ownerMedium total = 90 + 15 = 105.
+        // Both clear matchThreshold (50); margin = 110 - 105 = 5.0, below
+        // minimumMargin (10.0) -> REVIEW.
+        assertThat(result.getDecision()).isEqualTo(Decision.REVIEW);
+        assertThat(result.getMatch()).isNull();
+        assertThat(result.hasSecondBest()).isTrue();
+        assertThat(result.getMargin()).isEqualTo(5.0);
+        assertThat(result.getScore().getValue()).isEqualTo(110.0);
+        assertThat(result.getSecondBestScore().getValue()).isEqualTo(105.0);
+    }
+
+    @Test
     void missingValueOnOneSideIsMissingOneNotConflict() {
         ExternalPerson source = new ExternalPerson("Seán", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 Collections.singletonList("12 Main Street"));
@@ -312,7 +385,6 @@ class EndToEndResolutionTest {
 
         assertThat(firstNameContribution).isNotNull();
         assertThat(firstNameContribution.getCategory()).isEqualTo(ComparisonCategory.MISSING_ONE);
-        assertThat(firstNameContribution.getCategory()).isNotEqualTo(ComparisonCategory.CONFLICT);
 
         // firstName: MISSING_ONE (0). lastName: EXACT (30). dateOfBirth:
         // EXACT (25). address: both normalize to "12 main street" -> EXACT (40).
@@ -428,6 +500,37 @@ class EndToEndResolutionTest {
     }
 
     /**
+     * The shuffle test above deliberately keeps every score distinct, so it
+     * never exercises {@link ThresholdDecisionEngine}'s stable-sort claim.
+     * Tied candidates keeping their input order is the one case where §96
+     * determinism is actually order-sensitive: a stable sort's guarantee is
+     * about relative order of equal elements in whatever order they arrive
+     * in, not about reproducing some other baseline order after a shuffle.
+     * This asserts the ranked order follows the candidate list's own input
+     * order for two candidates tied on score, in both input orders.
+     */
+    @Test
+    void tiedCandidatesKeepTheirInputOrderUnderTheStableSort() {
+        ExternalPerson source = positiveSource();
+        // ownerTiedOne and ownerTiedTwo are constructed identically on every
+        // field the scorer sees, so both score firstName LOW (-5) + lastName
+        // EXACT (30) + dateOfBirth EXACT (25) + address MEDIUM (15) = 65,
+        // an exact tie.
+        Owner ownerTiedOne = new Owner("owner-tied-1", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+                "12 Main St. Dublin 4");
+        Owner ownerTiedTwo = new Owner("owner-tied-2", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+                "12 Main St. Dublin 4");
+
+        EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
+
+        MatchResult<Owner> firstOrder = resolver.resolve(source, Arrays.asList(ownerTiedOne, ownerTiedTwo));
+        assertThat(rankedCandidates(firstOrder)).containsExactly(ownerTiedOne, ownerTiedTwo);
+
+        MatchResult<Owner> secondOrder = resolver.resolve(source, Arrays.asList(ownerTiedTwo, ownerTiedOne));
+        assertThat(rankedCandidates(secondOrder)).containsExactly(ownerTiedTwo, ownerTiedOne);
+    }
+
+    /**
      * Task 07/D6's documented-but-unenforced contract: {@code
      * .thresholds(...)} and the {@link ThresholdDecisionEngine} passed to
      * {@code .decisionEngine(...)} must be built from the same {@link
@@ -465,6 +568,18 @@ class EndToEndResolutionTest {
      * different instances with different values both pass {@code build()}
      * and {@code resolve()} silently applies whichever one the engine
      * actually holds, not the one named in {@code .thresholds(...)}.
+     *
+     * <p><strong>Do not delete or "fix" this test.</strong> It is a
+     * deliberate characterization test of task 07's known D6 hole, not an
+     * assertion that this behavior is desirable — it documents what the
+     * library does today so the gap cannot quietly widen unnoticed. When a
+     * later milestone makes {@link io.github.aindriub.jresolve.decision.MatchDecisionEngine}
+     * expose the {@link DecisionThresholds} or {@link ScoreScale} it actually
+     * holds, {@code build()} will be able to check the two instances agree
+     * and this test's assertion of {@code MATCH} should then fail (because
+     * {@code build()} would reject the mismatched instances before
+     * {@code resolve()} ever runs) — that failure is the signal the D6 gap
+     * has closed, and this test should be updated at that point, not before.
      */
     @Test
     void twoDifferentThresholdsInstancesSilentlyDecideAgainstTheEnginesOwnInstance() {
