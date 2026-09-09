@@ -41,3 +41,36 @@ this lands, so it is wave 1 on its own.
 - The `jresolve-benchmarks` module, JMH, javadoc/source/gpg release plugins, CI configuration.
 - Checkstyle, SpotBugs, JaCoCo — not required by this milestone; do not add a gate later tasks must then satisfy.
 - Any content in `jresolve-profiles-ie` beyond the empty package.
+
+## Attempt 1 — failed
+
+Tester PASS, reviewer CHANGES. The build works; the gate it installs is
+bypassable, which is the one thing this task existed to prevent.
+
+**Defect — must fix.** `pom.xml` leaves animal-sniffer's own
+`animal.sniffer.skip` user property live, so `mvn verify
+-Danimal.sniffer.skip=true` silently skips the `java18` check. The acceptance
+list requires the check not be skippable by a property. Add `<skip>false</skip>`
+inside the plugin's existing `<configuration>` and re-verify that passing the
+property no longer skips it.
+
+**Suggestion — take it unless there is a reason not to.** The toolchain
+requirement pins `<vendor>openjdk</vendor>`. That matches the `toolchains.xml`
+written for this machine, but it fails against one whose vendor string reads
+`temurin` or `zulu`, which is what a second developer is likely to have.
+Dropping the `<vendor>` element keeps the JDK 17 requirement without the
+brittleness.
+
+**Measured, and worth keeping.** The tester found that with
+`maven.compiler.release=8`, javac's own `--release` check rejects a post-Java-8
+API before animal-sniffer ever runs — proving sniffer non-vacuous needed
+`release` temporarily raised to 11 to let the probe compile. Animal-sniffer then
+failed correctly: `Undefined reference: java.util.List java.util.List.of(Object,
+Object)`. Both gates work, and they are genuinely redundant for this class of
+violation. Keep both anyway: `release=8` is what someone weakens to unblock
+themselves in a hurry, and sniffer is what catches it when they do.
+
+Also confirmed by measurement, so no later task needs to re-derive it: breaking
+the `toolchains.xml` version makes the build fail with `Cannot find matching
+toolchain definitions`, not fall back to Maven's JDK 25; and
+`dependency:list -DincludeScope=runtime` on core resolves nothing.
