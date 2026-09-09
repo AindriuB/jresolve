@@ -34,7 +34,11 @@ class UnicodeFormNormalizerTest {
     @Test
     void nfcRecomposesADecomposedCharacter() {
         StringNormalizer normalizer = new UnicodeFormNormalizer(Normalizer.Form.NFC);
-        String decomposed = "é";
+        // "e" + U+0301 combining acute accent, written as an escape rather than
+        // a raw combining mark, which renders identically to the precomposed
+        // é below and would let an NFC-normalizing pass on the source silently
+        // make this test vacuous.
+        String decomposed = "e\u0301";
 
         String result = normalizer.normalize(decomposed);
 
