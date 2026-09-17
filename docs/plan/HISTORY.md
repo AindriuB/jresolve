@@ -3,6 +3,91 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-17 — Milestone 5 wave 1: composite rules per group, neutral core fixtures, reordered alias tiers (tasks 26, 27, 29)
+
+Three disjoint tasks, 598 tests (520 core + 78 profiles), `BUILD SUCCESS`.
+None of it is new capability — every task implements a decision taken after
+milestone 4.
+
+**26 — the composite rule became selectable per group.** `SMALLEST | AVERAGE
+| STRONGEST` on each declared group, `composite(fields)` still meaning
+`SMALLEST`, additive by the `default` method pattern tasks 10 and 17
+established. A test implements `FellegiSunterModel` without overriding the new
+method and asserts it still reports `SMALLEST`, which is what keeps the
+interface change additive rather than merely claimed to be.
+
+The scorer had to change shape rather than gain a branch. It kept one member
+and suppressed the rest, which works whenever the group's weight *is* some
+member's weight — true for smallest and strongest, false for an average, whose
+mean is nobody's. That exposed a question the task file had not anticipated:
+under `AVERAGE` the carrying member reports a number that is not its own
+weight, and the ordinary contribution key would claim that field measured
+something it did not. It reports `compositeCombined` instead.
+
+**That answers the rule 7 amendment's own question.** Task 26 was the first
+task to write a design artefact under the amended rule, and owed a judgement on
+whether writing `docs/calibration.md` beside the code beat recording it
+afterwards. The `compositeCombined` key is the evidence: the choice only
+exists once you have seen that `AVERAGE` breaks the keep-one-member shape. A
+scribe recording the decision later would have documented all three rules
+correctly and had no reason to notice that one of them makes the explanation
+lie. The amendment earned its place on its first use.
+
+**27 — core's fixtures went neutral.** `ExternalPerson` → `IncomingRecord`,
+`Owner` → `StoredRecord`, and the members with them. The documented grep
+returns nothing over `jresolve-core/src`. D1's asymmetry was preserved
+deliberately — four members with a `List<String>` against five with a `String`
+— because a rename that made the two types symmetric would have destroyed what
+the suite proves. No assertion value moved, checked by diffing assertion
+literals rather than by eye.
+
+Its judgement: little was lost, but only because the loss was already paid for
+elsewhere. The renamed tests still document the mechanics; what goes is the
+motivation, and `BeatTheJoinTest` in `jresolve-profiles-ie` carries that. Had
+that test not existed, this rename would have cost something real — which is
+the argument for the rule, not against it.
+
+**29 — the alias tiers were reordered.** One production line at
+`DefaultAliasRepository:61`; everything else was tests. Exactly two
+expectations moved, both derived pairs spanning a translation edge and a
+nickname edge: `Pádraig`/`Paddy` through Patrick and `Liam`/`Will` through
+William. Every declared edge kept its declared kind. `BeatTheJoinTest` was run
+before and after — 13 tests, green both times, category assertions untouched —
+because Seán/John and Ó Súilleabháin/O'Sullivan are declared translation pairs
+rather than derived ones. Milestone 2's thesis does not move.
+
+Its judgement: task 15's implementer first wrote `Pádraig`/`Paddy` as a
+nickname and was corrected by the old ordering; the reorder puts their original
+expectation back. One data point rather than a pattern, but it is the only
+evidence for the new order that no argument produced — and the objection
+recorded in D7 still stands unrefuted.
+
+**The coverage gap task 29 found is the most reusable lesson.** Core's
+`DefaultAliasRepositoryTest` mixed variant with translation and never
+translation with nickname, so all 31 of its tests stayed green under a reorder
+of exactly those two tiers. The behaviour was pinned only in
+`jresolve-profiles-ie`. Three tests added, and reverting the production line
+now turns two of them red. A core behaviour exercised only through a profile is
+a core behaviour core does not pin.
+
+**Both new suites were mutation-checked rather than trusted for passing first
+time**, per the discipline milestone 1 established: forcing `compositeRuleFor`
+to return `SMALLEST` turns four of task 26's tests red, and reverting the tier
+order turns two of task 29's. In each case one new test stays green by design,
+and the commit says which and why rather than claiming the whole suite catches
+the regression.
+
+**Two findings about the checks rather than the code**, both from task 27 and
+both now in `PLAN.md`: the vocabulary rule collides with rule 6's required
+synthetic-data statement, and `dateOfBirth` escapes the documented grep
+entirely because "dob" is not a word inside it. The grep is necessary and not
+sufficient, and nothing enforces it at build time.
+
+**Two things were deliberately left for this pass rather than done in a task.**
+`PLAN.md` still named `ExternalPerson` and `Owner` in task 27's own
+description, and the three task files were unretired. Both sit outside every
+task's `Owns`, so rule 2 kept them out of the tasks that noticed them.
+
 ## 2026-09-17 — Eight standing questions decided; D19 closes and milestone 5 is named (decisions)
 
 No code changed. Every question this project had left to a maintainer was put
