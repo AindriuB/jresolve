@@ -3,6 +3,68 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-17 — Explainable rejection closes milestone 5, and the plan empties but for a gate no code closes (task 25)
+
+`MatchResult.getRejectedCandidates()` carries each vetoed candidate with the
+rule that vetoed it. 621 tests (543 core + 78 profiles), `BUILD SUCCESS`. With
+this the planning file holds one unchecked item, task 28, and it is not a
+coding task.
+
+**What it closes.** D4 settled that a `CandidateRule` veto drops the candidate
+rather than routing partial evidence to a scorer — the right call, because
+`RuleBasedScorer` never inspects `isComplete()` and would let a vetoed
+candidate score above the match threshold. The cost of dropping was that the
+candidate became invisible: a consumer could not tell one that scored badly
+from one that was never scored. That cost is now paid back without reopening
+the routing question.
+
+**The identifier was forced by a measurement, not chosen.** The obvious design
+names the rule by its class. Every `CandidateRule` in this library and its
+tests is a lambda, and a lambda's generated class name is not stable across
+builds — so a class-name key would have been a synthetic string that changes
+between builds, and documenting it as a stable identifier would have been
+false. Rules are identified by configured position instead: stable, and
+something the consumer chose. A `default` accessor on `CandidateRule` would
+allow real names and is additive whenever someone wants one; it was not added
+now because a lambda cannot override a default method, so it would serve
+nobody today.
+
+**Additive by copy-with, and the ordering carries a guarantee.**
+`MatchResult.withRejected` returns a copy, so `MatchDecisionEngine` — outside
+this task's `Owns` — was never touched, and every existing caller of the public
+constructor keeps working. The resolver attaches rejections *after* the engine
+has decided, which is not incidental: it makes a veto reaching the decision
+structurally impossible rather than merely unlikely. A test implements the
+original `decide(List)` alone and asserts both halves.
+
+**A distinction that was easy to lose.** `resolveOne` returns null for two
+different reasons — a rule veto and unscorable evidence — and only the first is
+a rejection. Merging them would have reported a scorer's refusal as a rule's
+rejection. A test pins an unscorable candidate appearing in neither list.
+
+**The judgement task 25 owed, on D12's narrow projection after a second
+deliberate carrying: it still looks right, and this instance argues for it.**
+The rejection needed a genuinely different shape from `ScoredCandidate` — no
+score, no contributions, a rule key instead — and exposing a richer object
+would not have carried the rule key at all, because the rule's identity is not
+in the evidence. The two carryings are not the same work done twice; each
+signal needed its own type because each holds different content. Task 18
+recorded the cost as the intended trade, and after a second instance that
+reading holds.
+
+**One cost named rather than left to be found.** `MatchResult` now holds two
+parallel lists that must not overlap, and nothing in the type prevents it: the
+invariant lives in the resolver and in a test rather than being
+unrepresentable. Two is manageable. A third would be the point to stop and
+reshape the type, and `PLAN.md` says so now rather than after someone adds one.
+
+**Where the project stands.** Six milestones, 33 tasks, 621 tests. The planning
+file's only unchecked item is task 28 — a licensed alias corpus — which blocks
+publication and nothing else, and which no amount of code closes. Two gaps
+remain deliberately open and correctly stated: prose that goes stale without
+naming anything, and missing test *combinations* rather than missing
+behaviours.
+
 ## 2026-09-17 — Milestone 6: the rules check themselves, and two of the five gaps turn out to be differently shaped (tasks 30, 31, 32)
 
 Three tasks against the five gaps milestone 5 wave 1 raised. 602 tests (524
