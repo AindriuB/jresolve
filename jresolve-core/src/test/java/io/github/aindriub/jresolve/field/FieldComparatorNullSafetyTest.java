@@ -3,6 +3,9 @@ package io.github.aindriub.jresolve.field;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import io.github.aindriub.jresolve.alias.AliasRepository;
+import io.github.aindriub.jresolve.alias.DefaultAliasRepository;
+import io.github.aindriub.jresolve.comparison.DefaultTokenSplitter;
 import io.github.aindriub.jresolve.comparison.SimilarityMetric;
 import io.github.aindriub.jresolve.evidence.ComparisonCategory;
 import io.github.aindriub.jresolve.evidence.FieldEvidence;
@@ -21,10 +24,17 @@ class FieldComparatorNullSafetyTest {
 
     private static final SimilarityMetric CONSTANT_METRIC = (left, right) -> 1.0;
 
+    private static final AliasRepository EMPTY_REPOSITORY =
+            DefaultAliasRepository.builder()
+                    .group(Arrays.asList("alpha", "bravo"), ComparisonCategory.ALIAS_NICKNAME)
+                    .build();
+
     private static List<FieldComparator<String>> comparators() {
         return Arrays.asList(
                 new ExactFieldComparator<>(),
-                new SimilarityFieldComparator(CONSTANT_METRIC, new SimilarityBands()));
+                new SimilarityFieldComparator(CONSTANT_METRIC, new SimilarityBands()),
+                new AliasAwareFieldComparator(EMPTY_REPOSITORY, new ExactFieldComparator<String>()),
+                new TokenSubsumptionComparator(new DefaultTokenSplitter()));
     }
 
     @ParameterizedTest
@@ -86,6 +96,6 @@ class FieldComparatorNullSafetyTest {
         //
         // So: whoever adds a comparator to this package adds it above and
         // updates this count.
-        assertThat(comparators()).hasSize(2);
+        assertThat(comparators()).hasSize(4);
     }
 }

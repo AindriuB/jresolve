@@ -23,7 +23,7 @@ applies it.
 ## Acceptance
 - [ ] `TokenSubsumptionComparator` extends `AbstractNullSafeFieldComparator<String>`, takes a `TokenSplitter` at construction, and rejects a null splitter.
 - [ ] Both sides are tokenised into sets; a test asserts that a repeated token does not change the outcome.
-- [ ] Every `TokenSubsumption` value is reachable and tested: equal sets yield `EQUIVALENT`; a strict subset on the left yields `LEFT_SUBSUMES_RIGHT`; the converse yields `RIGHT_SUBSUMES_LEFT`; disjoint or partially-overlapping sets yield `NEITHER`. This comparator never returns `NOT_APPLICABLE`.
+- [ ] Every `TokenSubsumption` value is reachable and tested: equal sets yield `EQUIVALENT`; a strict subset on the left yields `LEFT_SUBSUMES_RIGHT`; the converse yields `RIGHT_SUBSUMES_LEFT`; disjoint or partially-overlapping sets yield `NEITHER`. This comparator never returns `NOT_APPLICABLE` **when both values are present** — see the amendment; the plan's flat "never" was wrong.
 - [ ] The naming direction of `LEFT_SUBSUMES_RIGHT` is stated in Javadoc with a worked token example and pinned by a test asserting the asymmetric case, so the two directions cannot be transposed silently.
 - [ ] The category reported alongside the signal distinguishes containment from conflict: a strict subset is **not** `CONFLICT`. State the category mapping in Javadoc and pin every arm with a test.
 - [ ] A test reproduces D9's §90 shape with neutral tokens: one source and two candidates that each strictly subsume it, asserting both yield the same category and the same subsumption direction — which is *why* the margin between them is small.
@@ -48,6 +48,20 @@ which is the clash `Owns` exists to prevent.
 The gap this leaves is narrow and deliberate: between 13 and 14 landing, the
 alias comparator's null handling is covered by its own test (task 13 asserts
 all four combinations) but not by the package-wide sweep. Task 14 closes it.
+
+## Second planning amendment (at implementation)
+
+Acceptance said flatly that this comparator never returns `NOT_APPLICABLE`.
+It does, and correctly so: a null on either side is answered by the inherited
+null rule before `compareNonNull` runs, and that path computes no containment,
+which is exactly what `NOT_APPLICABLE` means. The criterion is scoped to two
+present values, and the null case is asserted separately.
+
+The distinction is worth keeping rather than smoothing over. A punctuation-only
+value and a null value reach the same *category*, because the evidence is the
+same — neither tells us anything about the other side. They differ in the
+signal: the empty value had containment computed and found none (`NEITHER`),
+the null never got that far (`NOT_APPLICABLE`).
 
 ## Out of scope
 - Anything address-shaped — naming, street/locality structure, postcode handling. That is task 15, in the profiles module.
