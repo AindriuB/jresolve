@@ -16,6 +16,7 @@ public final class MatchResult<C> {
     private final Score score;
     private final Score secondBestScore;
     private final List<ScoredCandidate<C>> candidates;
+    private final List<RejectedCandidate<C>> rejected;
 
     /**
      * The legal combinations of {@code decision}, {@code match}, {@code
@@ -79,10 +80,55 @@ public final class MatchResult<C> {
         this.score = score;
         this.secondBestScore = secondBestScore;
         this.candidates = Collections.unmodifiableList(new ArrayList<ScoredCandidate<C>>(candidates));
+        this.rejected = Collections.<RejectedCandidate<C>>emptyList();
+    }
+
+    private MatchResult(MatchResult<C> source, List<RejectedCandidate<C>> rejected) {
+        this.decision = source.decision;
+        this.match = source.match;
+        this.score = source.score;
+        this.secondBestScore = source.secondBestScore;
+        this.candidates = source.candidates;
+        this.rejected = Collections.unmodifiableList(new ArrayList<RejectedCandidate<C>>(rejected));
+    }
+
+    /**
+     * Returns a copy of this result carrying the candidates a
+     * {@code CandidateRule} vetoed.
+     *
+     * <p>A copy rather than a constructor parameter so that the change is
+     * additive: every existing caller of the public constructor keeps
+     * compiling, and a {@code MatchDecisionEngine} written before rejections
+     * existed keeps producing a valid result. The resolver attaches them after
+     * the engine has decided, which also makes it structurally impossible for
+     * a veto to influence the decision.
+     *
+     * @param rejected the vetoed candidates; never null, copied defensively
+     */
+    public MatchResult<C> withRejected(List<RejectedCandidate<C>> rejected) {
+        if (rejected == null) {
+            throw new IllegalArgumentException("rejected must not be null");
+        }
+        return new MatchResult<C>(this, rejected);
     }
 
     public Decision getDecision() {
         return decision;
+    }
+
+    /**
+     * The candidates a {@code CandidateRule} vetoed, each with the rule that
+     * vetoed it, in the order the candidates were supplied.
+     *
+     * <p>Never null, and empty unless the resolver attached rejections. A
+     * vetoed candidate never appears in {@link #getCandidates()}: it was
+     * dropped before scoring, so it has no score to rank. That is the
+     * distinction this accessor exists to make visible — without it a
+     * consumer cannot tell a candidate that scored badly from one that was
+     * never scored.
+     */
+    public List<RejectedCandidate<C>> getRejectedCandidates() {
+        return rejected;
     }
 
     /**
