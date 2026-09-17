@@ -115,6 +115,36 @@ ordering claim still held under the defect, so a test asserting only "rare
 beats common" would have passed and shipped it — the hand-derived absolute
 value is what failed.
 
+## Milestone 5 — planned, not started
+
+Four items, all arising from decisions taken after milestone 4 rather than from
+new capability. No task files exist for these yet.
+
+- [ ] **25 — Explainable rejection.** `MatchResult` carries the candidates a
+  `CandidateRule` vetoed and the rule that vetoed each. Today a veto returns
+  null from `DefaultEntityResolver:101` and the candidate vanishes, so a
+  consumer cannot tell one that scored badly from one that was never scored.
+  D4 is now explicit that dropping is correct; this closes the explanation gap
+  dropping leaves.
+- [ ] **26 — The composite combination rule becomes selectable.** One setting on
+  `DefaultFellegiSunterModel.Builder` — `SMALLEST | AVERAGE | STRONGEST`,
+  defaulting to `SMALLEST`, so existing behaviour is unchanged.
+  `docs/calibration.md` gains the paragraph saying there is no measurement
+  procedure for the choice, and that a consumer who has not measured the
+  within-group correlation should leave it alone.
+- [ ] **27 — Core's test fixtures lose their domain vocabulary.**
+  `docs/conventions.md` now binds `src/test` as well as `src/main`. Measured
+  rather than estimated: **112 hits across exactly four files**, all in
+  `endtoend/` — `EndToEndResolutionTest` (88), `ExternalPerson` (12), `Owner`
+  (11), `FellegiSunterResolutionTest` (1). Two of those are type names, so this
+  is a rename of the fixture types as well as their members. `src/main` is
+  already clean under the same grep. Until this lands **the rule outruns the
+  code** — the one inconsistency in this repository that is deliberate and
+  dated rather than unnoticed.
+- [ ] **28 — A sourced alias corpus.** Not a code task: it needs a licensed
+  source for the Irish/English and nickname tables. D19 makes this a release
+  gate, so it blocks publication rather than any other work.
+
 ## Notes for implementers
 
 - `jresolve-core` needs a JDK 17 toolchain (`~/.m2/toolchains.xml`, not part
@@ -131,18 +161,10 @@ reopen the review. Closed items are not listed; see `HISTORY.md`.
 
 ### Raised in milestone 2
 
-- **D19's alias-corpus provenance is now urgent rather than theoretical.**
-  `IrishNameAliases` ships illustrative, hand-written tables and says so in
-  its first Javadoc paragraph. A release that treats them as reference data
-  would be a mistake. This needs a sourced corpus under a compatible licence
-  before any publication.
-- **The alias strength ordering is a judgement worth a second opinion.**
-  `DefaultAliasRepository` resolves a mixed merge by maximum-bottleneck path,
-  ordering `ALIAS_VARIANT` > `ALIAS_NICKNAME` > `ALIAS_TRANSLATION` by how
-  much each claims about closeness. The mechanism is sound and tested; the
-  *ordering* is a call that a domain reviewer should confirm. The builder
-  rejects any other category precisely because admitting one means placing it
-  in that order.
+- **D19's alias-corpus provenance gates any release.** Decided after milestone
+  4: `IrishNameAliases` ships illustrative, hand-written tables, and nothing
+  publishes until a corpus with a compatible licence replaces them. Not a code
+  defect and not fixable by code — it needs a source. Task 28 owns it.
 - **`IrishAddressComparator` cannot emit `PARTIAL_OVERLAP` or `CONFLICT`** —
   it bands those two cases instead. Task 16's scorer configures weights for
   them anyway so a later change surfaces as a wrong score rather than a
@@ -167,44 +189,33 @@ reopen the review. Closed items are not listed; see `HISTORY.md`.
 ### Raised in milestone 4
 
 - **`FellegiSunterScorer`'s unscorable path is unreachable through the
-  resolver.** `DefaultEntityResolver:110` always builds the scorer's evidence
-  with `complete = true`, and a rule's `REJECT` returns null at `:101`, so a
-  cost-tier veto drops the candidate rather than passing partial evidence
-  downstream. D4 describes the other behaviour. The scorer's refusal stays
-  unit-tested and correct for a consumer assembling evidence directly; it is
-  simply not exercised end to end. Decide whether D4's description or the
-  implementation is the intended design before a third scorer arrives.
-- **The composite rule is a judgement worth a second opinion.** A declared
-  composite group contributes the *smallest* weight among its present members.
-  The reasoning is that overconfidence is D11's named failure mode, so the
-  group should claim no more than its least favourable member — but averaging
-  or taking the strongest are defensible alternatives, and this is a
-  statistical call rather than an engineering one.
+  resolver, and that is now the intended design.** A cost-tier veto drops the
+  candidate at `DefaultEntityResolver:101`. D4 was amended to say so, because
+  `RuleBasedScorer` never inspects `isComplete()` — routing partial evidence to
+  it would let a vetoed candidate score above `matchThreshold` and make a hard
+  veto overridable. The scorer's refusal stays unit-tested and correct for a
+  consumer assembling evidence directly. What dropping costs — a vetoed
+  candidate being invisible to a consumer — is task 25, not this entry.
 - **The library ships no calibrated model, and `docs/calibration.md` says so.**
   That is the honest position, not a gap to close by inventing defaults — but
   it does mean a consumer cannot get a trustworthy probability out of the box,
   and anyone planning a release should know that is by design.
 
-### Open questions for the maintainer
+### Answered after milestone 4
 
-- **Does rule 7 admit a design artefact?** `CLAUDE.md` reserves docs to
-  `scribe`, and task 23 wrote `docs/calibration.md` anyway, noting the
-  exception in its commit. The argument: D11 names the file as a required
-  artefact and four classes cite it, so its content is decided by whoever
-  understands the model rather than by whoever records the work. Either amend
-  the rule to admit that case or move the file's authorship; leaving it as a
-  standing exception is the worst of the three.
+Both standing questions here were decided, and the decisions are recorded where
+the rules themselves live rather than only here.
 
-- **Does the domain-vocabulary rule bind test fixtures?**
-  `docs/conventions.md:43` forbids `name`, `address`, `person`, `dob`,
-  `irish` in "any core type, member, package or Javadoc" and calls it
-  grep-checkable. Core's `endtoend/` package has roughly fifty hits, all
-  legitimate — an end-to-end test must model a consumer's domain objects, and
-  a consumer's types are domain-shaped by definition. So the rule as written
-  and as practised differ, and a reviewer running that grep on a future diff
-  has to decide by hand each time. The rule should say which sources it
-  binds. Not changed unilaterally: it is a convention, and conventions are
-  the maintainer's.
+- **Rule 7 admits a design artefact.** `CLAUDE.md` rule 7 now reads: only
+  `implementer` writes code; `scribe` writes the planning record; a doc whose
+  content is a design output and which code cites — `docs/calibration.md` — is
+  written by the role that owns the design. Task 23's exception is a rule now,
+  so the next such artefact does not re-litigate it.
+- **The domain-vocabulary rule binds tests too.** `docs/conventions.md` now says
+  the grep takes no exceptions anywhere in `jresolve-core`, `src/test`
+  included, and that domain-shaped fixtures belong in `jresolve-profiles-ie`.
+  Core's `endtoend/` package does not comply yet — that is task 27, and the
+  gap is dated rather than silent.
 
 ### Carried forward from milestone 1
 
