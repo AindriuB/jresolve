@@ -27,6 +27,7 @@
     <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
     <animal-sniffer-maven-plugin.version>1.23</animal-sniffer-maven-plugin.version>
+    <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -140,6 +141,72 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>animal-sniffer-maven-plugin</artifactId>
+      </plugin>
+      <!--
+        A reference that has gone stale fails the build rather than rotting in
+        a comment. Task 27 renamed two fixture types and left a neighbouring
+        file's Javadoc describing types that no longer existed; nothing caught
+        it. doclint does, for anything named with {@link}.
+
+        What it does NOT catch is the defect that raised this gap: a comment
+        that describes neighbouring code wrongly while naming nothing. That
+        stays a review matter and is recorded as such in PLAN.md.
+
+        This is a build plugin, not a library dependency. Nothing here reaches
+        the artifact's classpath, so docs/architecture.md's no-dependency
+        boundary is untouched.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>${maven-javadoc-plugin.version}</version>
+        <executions>
+          <execution>
+            <!--
+              Test sources need their own execution: javadoc-no-fork reads
+              main sources only. The defect that raised this gap lived in a
+              test class's Javadoc, so a gate that skipped src/test would have
+              been a gate over the wrong half of the repository.
+            -->
+            <id>javadoc-doclint-tests</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>test-javadoc-no-fork</goal>
+            </goals>
+            <configuration>
+              <show>private</show>
+              <doclint>all,-missing</doclint>
+              <failOnWarnings>true</failOnWarnings>
+              <quiet>true</quiet>
+            </configuration>
+          </execution>
+          <execution>
+            <id>javadoc-doclint</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>javadoc-no-fork</goal>
+            </goals>
+            <configuration>
+              <!--
+                private: javadoc's default scope is `protected`, so a stale
+                link on a private member is not even looked at. The defect
+                this gate exists for does not care which member carries it.
+              -->
+              <show>private</show>
+              <!--
+                all,-missing: every doclint group except the one that demands
+                complete Javadoc. `reference` is the group this gate exists
+                for: a {@link} to something that no longer exists. `missing`
+                would add 100 warnings about absent @param and @return tags,
+                which is a documentation-completeness policy this project has
+                never adopted and is not what a stale reference is.
+              -->
+              <doclint>all,-missing</doclint>
+              <failOnWarnings>true</failOnWarnings>
+              <quiet>true</quiet>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
