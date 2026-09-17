@@ -1,4 +1,9 @@
-/.claude/
+# Local agent machinery (roles, commands, worktree scripts) stays local.
+# The SessionStart hook and its registration are shared, so they are exceptions:
+# a hook only runs for future sessions if it is committed.
+/.claude/*
+!/.claude/hooks/
+!/.claude/settings.json
 /.worktrees/
 
 # Java / Maven
