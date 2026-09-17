@@ -60,13 +60,19 @@ class IrishNameAliasesTest {
         //
         // Note this asserts the *declared* pair. Pádraig also reaches Paddy,
         // but only through Patrick, so that pair reports the weakest link on
-        // the path rather than the nickname — see the mixed-merge test below.
+        // the path — a nickname under D7's order — rather than the translation
+        // declared here. See the mixed-merge test below.
         assertThat(relate("Pádraig", "Patrick")).isSameAs(ComparisonCategory.ALIAS_TRANSLATION);
     }
 
     @Test
     void aDiacriticBearingLookupAlsoReachesADerivedPair() {
-        assertThat(relate("Pádraig", "Paddy")).isSameAs(ComparisonCategory.ALIAS_TRANSLATION);
+        // Pádraig reaches Paddy only through Patrick: a translation edge then
+        // a nickname edge. D7 ranks the nickname lowest, so it is the weakest
+        // link and the derived pair claims it. Task 15 first wrote this
+        // expectation as a nickname and was corrected by the old ordering;
+        // the reorder in task 29 puts it back.
+        assertThat(relate("Pádraig", "Paddy")).isSameAs(ComparisonCategory.ALIAS_NICKNAME);
     }
 
     @Test
@@ -92,13 +98,14 @@ class IrishNameAliasesTest {
 
     @Test
     void aDerivedPairAcrossAMixedMergeTakesTheWeakestLink() {
-        // liam/william is a translation, william/will a nickname. liam reaches
-        // will only through the translation, so that is what it reports —
-        // while william/will itself still reports the nickname it was declared
-        // as. A repository storing one kind per group could not say both.
+        // liam/william is a translation, william/will a nickname. Under D7's
+        // order the nickname is the weaker of the two, so the derived
+        // liam/will pair reports it — while both declared edges keep the kind
+        // they were declared with. A repository storing one kind per group
+        // could not say all three.
         assertThat(relate("Liam", "William")).isSameAs(ComparisonCategory.ALIAS_TRANSLATION);
         assertThat(relate("William", "Will")).isSameAs(ComparisonCategory.ALIAS_NICKNAME);
-        assertThat(relate("Liam", "Will")).isSameAs(ComparisonCategory.ALIAS_TRANSLATION);
+        assertThat(relate("Liam", "Will")).isSameAs(ComparisonCategory.ALIAS_NICKNAME);
     }
 
     // --------------------------------------------------------- not too eager
