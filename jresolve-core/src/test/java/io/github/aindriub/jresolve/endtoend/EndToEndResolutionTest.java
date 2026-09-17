@@ -62,12 +62,24 @@ import static org.assertj.core.api.Assertions.assertThat;
  * address pair below; this milestone produces {@code LOW} and {@code MEDIUM}
  * instead, and closing that gap is D7's and D9's job, not this test's.
  *
+ * <p><strong>Those now exist, and this suite still does not use them.</strong>
+ * The alias repository and the address pipeline live in
+ * {@code jresolve-profiles-ie}, and {@code jresolve-core} cannot depend on
+ * that module — the dependency runs the other way and a test-scoped edge
+ * would cycle the reactor. So this file keeps the generic comparators on
+ * purpose: what it proves is that the <em>core</em> layers compose, with
+ * every band below derived from a hand-computed edit distance. The claim that
+ * the library beats an exact-key join is a different claim, and it is tested
+ * where the real pipelines are, in that module's {@code endtoend} package.
+ * A reader who wants to know whether a fuzzy field decides anything should
+ * look there, not here.
+ *
  * <p><strong>What actually decides §88 today:</strong> lastName EXACT (30)
  * plus dateOfBirth EXACT (25) already total 55, above the 50-point match
- * threshold, before firstName or address contribute anything. Those two
- * exact-match fields are the evidence §88 exists to demonstrate net +10
- * between them; the fuzzy firstName comparison is a −5 penalty, not a
- * contribution toward the match. In plain terms, the positive scenario below
+ * threshold, before firstName or address contribute anything. The two fuzzy
+ * fields — the ones §88 exists to demonstrate — net only +10 between them:
+ * firstName is a −5 penalty and address a +15 contribution. In plain terms,
+ * the positive scenario below
  * would pass as a two-exact-key join — the same outcome a plain SQL join on
  * surname and date of birth would produce. That is an honest statement of
  * where this library stands after milestone 1, not a weakened stand-in for
@@ -281,6 +293,18 @@ class EndToEndResolutionTest {
                 .filteredOn(c -> "address".equals(c.getField()))
                 .extracting(FieldContribution::getCategory)
                 .containsExactly(ComparisonCategory.MEDIUM);
+
+        // Categories alone leave a weight change riding on the total
+        // assertion above: swap two weights and every category here still
+        // holds. Pinning the per-field contributions makes the weights
+        // themselves part of what this test guarantees.
+        assertThat(contributions)
+                .extracting(FieldContribution::getField, FieldContribution::getContribution)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.api.Assertions.tuple("firstName", -5.0),
+                        org.assertj.core.api.Assertions.tuple("lastName", 30.0),
+                        org.assertj.core.api.Assertions.tuple("dateOfBirth", 25.0),
+                        org.assertj.core.api.Assertions.tuple("address", 15.0));
     }
 
     @Test
@@ -507,27 +531,40 @@ class EndToEndResolutionTest {
      * about relative order of equal elements in whatever order they arrive
      * in, not about reproducing some other baseline order after a shuffle.
      * This asserts the ranked order follows the candidate list's own input
-     * order for two candidates tied on score, in both input orders.
+     * order for four candidates tied on score, in two different input orders.
+     *
+     * <p>Four rather than two, deliberately. With a pair, an unstable sort
+     * would have to swap the only two elements there are to be caught — which
+     * most sorts will not do — so the two-candidate version of this test
+     * passed under sorts that are not stable at all. Four tied elements in a
+     * reversed order give an unstable implementation somewhere to go wrong.
      */
     @Test
     void tiedCandidatesKeepTheirInputOrderUnderTheStableSort() {
         ExternalPerson source = positiveSource();
-        // ownerTiedOne and ownerTiedTwo are constructed identically on every
-        // field the scorer sees, so both score firstName LOW (-5) + lastName
-        // EXACT (30) + dateOfBirth EXACT (25) + address MEDIUM (15) = 65,
-        // an exact tie.
-        Owner ownerTiedOne = new Owner("owner-tied-1", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+        // All four are constructed identically on every field the scorer
+        // sees, so each scores firstName LOW (-5) + lastName EXACT (30) +
+        // dateOfBirth EXACT (25) + address MEDIUM (15) = 65, an exact tie.
+        Owner tiedOne = new Owner("owner-tied-1", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 "12 Main St. Dublin 4");
-        Owner ownerTiedTwo = new Owner("owner-tied-2", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+        Owner tiedTwo = new Owner("owner-tied-2", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+                "12 Main St. Dublin 4");
+        Owner tiedThree = new Owner("owner-tied-3", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+                "12 Main St. Dublin 4");
+        Owner tiedFour = new Owner("owner-tied-4", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 "12 Main St. Dublin 4");
 
         EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
 
-        MatchResult<Owner> firstOrder = resolver.resolve(source, Arrays.asList(ownerTiedOne, ownerTiedTwo));
-        assertThat(rankedCandidates(firstOrder)).containsExactly(ownerTiedOne, ownerTiedTwo);
+        MatchResult<Owner> firstOrder =
+                resolver.resolve(source, Arrays.asList(tiedOne, tiedTwo, tiedThree, tiedFour));
+        assertThat(rankedCandidates(firstOrder))
+                .containsExactly(tiedOne, tiedTwo, tiedThree, tiedFour);
 
-        MatchResult<Owner> secondOrder = resolver.resolve(source, Arrays.asList(ownerTiedTwo, ownerTiedOne));
-        assertThat(rankedCandidates(secondOrder)).containsExactly(ownerTiedTwo, ownerTiedOne);
+        MatchResult<Owner> reversedOrder =
+                resolver.resolve(source, Arrays.asList(tiedFour, tiedThree, tiedTwo, tiedOne));
+        assertThat(rankedCandidates(reversedOrder))
+                .containsExactly(tiedFour, tiedThree, tiedTwo, tiedOne);
     }
 
     /**

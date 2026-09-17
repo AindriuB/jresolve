@@ -52,7 +52,15 @@ installed JDK 17 before running `mvn verify`, for example:
 
 Without a matching `toolchains.xml`, the build fails with "Cannot find
 matching toolchain definitions" rather than silently falling back to whatever
-JDK is running Maven. Maven itself can run on any JDK 9+ (enforced by
+JDK is running Maven.
+
+In Claude Code on the web this is provisioned automatically:
+`.claude/hooks/session-start.sh` installs the JDK, writes `toolchains.xml`
+and warms the empty local repository. It reads the required version from the
+pom's `toolchain.jdk.version` rather than restating it, and is a no-op unless
+`CLAUDE_CODE_REMOTE=true`, so a local checkout keeps whatever toolchain its
+owner set up. The manual instructions above are what a local machine still
+needs. Maven itself can run on any JDK 9+ (enforced by
 `maven-enforcer-plugin`); only compilation is pinned to 17.
 
 ## The pipeline

@@ -3,6 +3,9 @@ package io.github.aindriub.jresolve.field;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import io.github.aindriub.jresolve.alias.AliasRepository;
+import io.github.aindriub.jresolve.alias.DefaultAliasRepository;
+import io.github.aindriub.jresolve.comparison.DefaultTokenSplitter;
 import io.github.aindriub.jresolve.comparison.SimilarityMetric;
 import io.github.aindriub.jresolve.evidence.ComparisonCategory;
 import io.github.aindriub.jresolve.evidence.FieldEvidence;
@@ -21,10 +24,17 @@ class FieldComparatorNullSafetyTest {
 
     private static final SimilarityMetric CONSTANT_METRIC = (left, right) -> 1.0;
 
+    private static final AliasRepository EMPTY_REPOSITORY =
+            DefaultAliasRepository.builder()
+                    .group(Arrays.asList("alpha", "bravo"), ComparisonCategory.ALIAS_NICKNAME)
+                    .build();
+
     private static List<FieldComparator<String>> comparators() {
         return Arrays.asList(
                 new ExactFieldComparator<>(),
-                new SimilarityFieldComparator(CONSTANT_METRIC, new SimilarityBands()));
+                new SimilarityFieldComparator(CONSTANT_METRIC, new SimilarityBands()),
+                new AliasAwareFieldComparator(EMPTY_REPOSITORY, new ExactFieldComparator<String>()),
+                new TokenSubsumptionComparator(new DefaultTokenSplitter()));
     }
 
     @ParameterizedTest
@@ -71,9 +81,21 @@ class FieldComparatorNullSafetyTest {
 
     @Test
     void comparatorListCoversEveryConcreteComparatorInThisPackage() {
-        // A manual list, not reflection: reflection would silently stop
-        // covering a new comparator added later, exactly the failure mode
-        // this test exists to catch.
-        assertThat(comparators()).hasSize(2);
+        // The list is manual because these comparators do not share a
+        // constructor signature, so reflection could not instantiate them
+        // generically.
+        //
+        // Be clear about what that costs, because the previous comment here
+        // had it backwards. Reflection would pick up a new comparator on its
+        // own; a manual list is precisely the thing that can silently stop
+        // covering one. This assertion does not read the package — it is a
+        // tripwire on the list, and it fails only once someone edits the
+        // list, prompting them to confirm the null contract holds for what
+        // they added. A comparator added to this package and never added
+        // here is covered by nothing, and nothing here will say so.
+        //
+        // So: whoever adds a comparator to this package adds it above and
+        // updates this count.
+        assertThat(comparators()).hasSize(4);
     }
 }

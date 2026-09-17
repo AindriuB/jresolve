@@ -4,6 +4,12 @@ package io.github.aindriub.jresolve.result;
  * The output of scoring one candidate: a value on a known {@link ScoreScale},
  * the algorithm that produced it, and an optional calibrated probability.
  *
+ * <p>{@code algorithm} is required. A score whose producer is unrecorded
+ * cannot be attributed later, and attribution is what lets a consumer tell a
+ * rule total from a likelihood ratio when both arrive as a bare double on the
+ * same {@link ScoreScale}. Scorers stamp their own constant; there is no
+ * default, because guessing one would attribute a score to the wrong model.
+ *
  * <p>{@code probability} is null unless the scoring model genuinely produces
  * a calibrated probability of a true match — never a similarity or a
  * likelihood ratio dressed up as one. A caller that needs a probability and
@@ -19,6 +25,9 @@ public final class Score {
     public Score(double value, ScoreScale scale, String algorithm, Double probability) {
         if (scale == null) {
             throw new IllegalArgumentException("scale must not be null");
+        }
+        if (algorithm == null) {
+            throw new IllegalArgumentException("algorithm must not be null");
         }
         if (probability != null && (probability < 0.0 || probability > 1.0)) {
             throw new IllegalArgumentException("probability must be within [0,1] when present");

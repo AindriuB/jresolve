@@ -34,7 +34,7 @@ public final class SimilarityFieldComparator extends AbstractNullSafeFieldCompar
     }
 
     @Override
-    FieldEvidence compareNonNull(String left, String right) {
+    protected FieldEvidence compareNonNull(String left, String right) {
         double similarity = metric.similarity(left, right);
         if (left.equals(right)) {
             return new DefaultFieldEvidence(ComparisonCategory.EXACT, similarity, left);

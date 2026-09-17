@@ -68,13 +68,14 @@ public final class MatchEvidence {
             first = false;
             FieldEvidence evidence = entry.getValue();
             builder.append(entry.getKey()).append('=');
-            if (evidence == null) {
-                builder.append("null");
-            } else {
-                // Only the category and similarity are printed; getFrequencyKey()
-                // may carry a normalized field value and must never reach toString().
-                builder.append(evidence.getCategory()).append('/').append(evidence.getSimilarity());
-            }
+            // No null check: the constructor rejects a null value for any key,
+            // so every value here is non-null by construction. A defensive
+            // branch would read as though null can occur and invite a later
+            // reader to relax that invariant.
+            //
+            // Only the category and similarity are printed; getFrequencyKey()
+            // may carry a normalized field value and must never reach toString().
+            builder.append(evidence.getCategory()).append('/').append(evidence.getSimilarity());
         }
         return builder.append("}}").toString();
     }

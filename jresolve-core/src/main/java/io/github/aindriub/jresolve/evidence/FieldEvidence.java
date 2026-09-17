@@ -26,4 +26,21 @@ public interface FieldEvidence {
      * and conflict outcome.
      */
     String getFrequencyKey();
+
+    /**
+     * Whether one side's tokens are contained in the other's.
+     *
+     * <p>Defaults to {@link TokenSubsumption#NOT_APPLICABLE}. A comparator
+     * that does not reason about tokens should leave this alone rather than
+     * reporting {@link TokenSubsumption#NEITHER}, which asserts that
+     * containment was computed and did not hold.
+     *
+     * <p>This is a {@code default} method so that adding it does not break
+     * an existing implementation, including one outside this library.
+     *
+     * @return the containment relation, never {@code null}
+     */
+    default TokenSubsumption getSubsumption() {
+        return TokenSubsumption.NOT_APPLICABLE;
+    }
 }
