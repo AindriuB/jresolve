@@ -80,13 +80,40 @@ capability. Both landed at 490 tests (412 core + 78 profiles),
   `FieldContribution` carries the subsumption signal, so a consumer reading
   `MatchResult` can tell a genuine tie from a coincidental one.
 
-**Not yet planned: D5 (Fellegi-Sunter).** Prior odds, frequency-adjusted `u`,
-`TermFrequencyTable`, and `docs/calibration.md`. Deliberately not decomposed
-yet — its shape depends on the frequency-key work, and planning it before 17
-and 18 landed would have been speculative. It is now the obvious next
-milestone, and better positioned than it was: task 12 documented the
-`toString`-consistent-with-`equals` requirement frequency keys depend on, and
-agreement is no longer confined to exact matches.
+**D5 followed as milestone 4** — see below.
+
+## Milestone 4 — complete
+
+Six tasks (19–24), four waves, closing D5 and the parts of D11, D16 and D17
+that depend on it. Closed at 582 tests (504 core + 78 profiles),
+`BUILD SUCCESS`.
+
+- [x] **19 — `TermFrequencyTable`.** Corpus counting with a floor, so an
+  unseen key never makes `u` zero.
+- [x] **20 — `FellegiSunterModel`.** `m`/`u` tables, optional prior odds,
+  composite declaration, declared missingness.
+- [x] **21 — `FellegiSunterScorer`.** `Σ log₂(m/u)` on
+  `LOG2_LIKELIHOOD_RATIO`, probability only where a prior exists.
+- [x] **22 — Training representation and extension points.** Labelled and
+  unlabelled examples; `FeatureExtractor` and `ProbabilityModel` unimplemented
+  per D17.
+- [x] **23 — `docs/calibration.md`.** The file D11 names; four classes cite it.
+- [x] **24 — Fellegi-Sunter end to end.** The probabilistic path through a
+  whole resolver.
+
+**The verdict (task 24).** The probabilistic path gives a consumer one thing
+the rule-based one cannot, and it is not the probability: **agreement on a
+common value scores lower than agreement on a rare one.** The probability is
+arithmetic on numbers nobody measured. The scale is a real but narrower gain —
+a margin on `LOG2_LIKELIHOOD_RATIO` means the same thing at every score
+level, which a points margin does not. **Nothing shipped is calibrated.**
+
+**What the end-to-end test was worth.** It caught a live defect before merge:
+a corpus covering one field inflated every *other* field to roughly 19 bits,
+because the table's floor for an uncovered field is its rarest answer. The
+ordering claim still held under the defect, so a test asserting only "rare
+beats common" would have passed and shipped it — the hand-derived absolute
+value is what failed.
 
 ## Notes for implementers
 
@@ -94,8 +121,8 @@ agreement is no longer confined to exact matches.
   of the repo) — see `docs/architecture.md#building`. In Claude Code on the
   web this is provisioned automatically by
   `.claude/hooks/session-start.sh`; on a local machine it is still manual.
-- `mvn clean verify` baseline at milestone 3's consolidation close is 490
-  tests (412 core + 78 profiles), `BUILD SUCCESS`.
+- `mvn clean verify` baseline at milestone 4's close is 582 tests
+  (504 core + 78 profiles), `BUILD SUCCESS`.
 
 ## Known gaps (non-blocking, no task owns these)
 
@@ -137,7 +164,36 @@ reopen the review. Closed items are not listed; see `HISTORY.md`.
   accessor guard in `FieldContributionTest` states the criterion any addition
   must meet.
 
+### Raised in milestone 4
+
+- **`FellegiSunterScorer`'s unscorable path is unreachable through the
+  resolver.** `DefaultEntityResolver:110` always builds the scorer's evidence
+  with `complete = true`, and a rule's `REJECT` returns null at `:101`, so a
+  cost-tier veto drops the candidate rather than passing partial evidence
+  downstream. D4 describes the other behaviour. The scorer's refusal stays
+  unit-tested and correct for a consumer assembling evidence directly; it is
+  simply not exercised end to end. Decide whether D4's description or the
+  implementation is the intended design before a third scorer arrives.
+- **The composite rule is a judgement worth a second opinion.** A declared
+  composite group contributes the *smallest* weight among its present members.
+  The reasoning is that overconfidence is D11's named failure mode, so the
+  group should claim no more than its least favourable member — but averaging
+  or taking the strongest are defensible alternatives, and this is a
+  statistical call rather than an engineering one.
+- **The library ships no calibrated model, and `docs/calibration.md` says so.**
+  That is the honest position, not a gap to close by inventing defaults — but
+  it does mean a consumer cannot get a trustworthy probability out of the box,
+  and anyone planning a release should know that is by design.
+
 ### Open questions for the maintainer
+
+- **Does rule 7 admit a design artefact?** `CLAUDE.md` reserves docs to
+  `scribe`, and task 23 wrote `docs/calibration.md` anyway, noting the
+  exception in its commit. The argument: D11 names the file as a required
+  artefact and four classes cite it, so its content is decided by whoever
+  understands the model rather than by whoever records the work. Either amend
+  the rule to admit that case or move the file's authorship; leaving it as a
+  standing exception is the worst of the three.
 
 - **Does the domain-vocabulary rule bind test fixtures?**
   `docs/conventions.md:43` forbids `name`, `address`, `person`, `dob`,
