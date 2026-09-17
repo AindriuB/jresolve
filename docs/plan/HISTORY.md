@@ -3,6 +3,97 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-17 — The explanation carries why two candidates tied (task 18)
+
+Milestone 2 gave the library a signal saying *why* two candidates are hard to
+separate and then dropped it before the consumer. `FieldContribution` held a
+category, a contribution and a template key; `RuleBasedScorer` had the
+evidence in hand and threw the subsumption away. So a consumer reading
+`MatchResult` saw *that* two candidates tied and could not see that each
+contains the source — the entire explanation for the tie. Task 16 had to
+reach past the result into the pipeline to assert it.
+
+**The design question the task refused to assume.** Put the signal on
+`FieldContribution`, or expose the whole `MatchEvidence` from
+`ScoredCandidate`? The wider option is more general and would stop this gap
+recurring for the next signal. It is also the opposite of what D10 asks for:
+`FieldEvidence` carries a frequency key, which is a *prepared value*, so
+exposing the evidence object would route a compared value into the result a
+consumer logs. Narrow, and the reasoning is recorded in the type's Javadoc so
+the next person does not re-open it.
+
+**An existing guard caught the addition, correctly.**
+`FieldContributionTest.exposesNoValueBearingAccessor` asserts this type's
+public accessors are exactly the four D10 allows, and it went red.
+`TokenSubsumption` is a five-constant enum describing a relation between
+token sets and cannot hold a compared value, so it clears the bar that
+`MatchEvidence` would not — but the guard was an allowlist of names, which
+invites appending one to make a red test green. It now states the criterion
+(*a member may join only if its type cannot carry a compared value*) in its
+Javadoc and names it in the failure message.
+
+Mutation-checked: making the scorer drop the signal again breaks the core
+unit test and both end-to-end assertions. The `NOT_APPLICABLE` test correctly
+survives, since dropping the signal makes everything not-applicable.
+
+**A near-miss worth recording.** The first mutation run appeared to show only
+*one* test catching the regression, which would have meant the end-to-end
+assertions were vacuous. It was the reactor halting at core before the
+profiles module ran. Re-running with failures ignored showed all three. The
+weaker reading was the plausible one, and believing it would have shipped a
+false claim about coverage.
+
+`mvn clean verify`: 412 core + 78 profiles = 490 tests, `BUILD SUCCESS`.
+
+## 2026-09-17 — D6 closed: a decision engine declares what it applies (task 17)
+
+The largest open correctness gap, carried unfixed through two milestones.
+
+`EntityResolverBuilder.build()` validated the `DecisionThresholds` passed to
+`.thresholds(...)` against the scorer's scale, but that object never reached
+the engine that decides. `MatchDecisionEngine` declared one method and
+`ThresholdDecisionEngine` held its thresholds privately, so `build()` could
+not inspect the object doing the deciding. What shipped was a Javadoc
+contract saying the two must agree — sufficient *when followed*, which is
+exactly the property a construction-time check exists to stop depending on.
+
+**Exposing the engine's `ScoreScale` is the obvious fix and is not enough**,
+and the existing characterization test proves it: it diverges two instances
+that are both `POINTS`, one declaring a match threshold of 200 to `build()`
+and the other applying 50 in the engine. A scale-only check passes that
+configuration happily. D6's own note anticipated this in a parenthesis —
+"expose its scale (and ideally its thresholds)" — and the parenthesis was the
+load-bearing half. So the interface exposes `declaredThresholds()`, a Java 8
+`default` returning null for "does not declare", following task 10's pattern;
+`MatchScorer.scale()` was already the precedent for an interface exposing
+what it operates on.
+
+`build()` now rejects an engine on the wrong scale *and* an engine whose
+thresholds differ from the declared ones. `DecisionThresholds` gains `equals`
+and `hashCode` so the comparison is by value:
+`EntityResolverBuilderTest.validBuilder()` already passed two separately
+constructed instances, so identity comparison would have broken existing
+callers for no gain. An engine declaring nothing still builds, with a test
+holding that open — narrowing what is buildable only where something can
+actually be verified.
+
+**The characterization test asserted the bug, so closing the hole broke it.**
+Its own Javadoc had anticipated the moment: "this test's assertion of
+`MATCH` should then fail ... that failure is the signal the D6 gap has
+closed, and this test should be updated at that point, not before." That is
+what happened, and it was updated as instructed — the same configuration, now
+asserted to be rejected, plus the wrong-scale case D6 reproduced and the
+equal-but-separate case that must keep working. Task 17 owning that file was
+identified while planning rather than discovered mid-implementation.
+
+Mutation-checked: making `build()` blind to the engine turns exactly the five
+rejection tests red and nothing else. One of the implementer's own test
+expectations was wrong and corrected before commit — it hardcoded a threshold
+of 50 against a scorer yielding 10, so the resolve came back `NO_MATCH`. The
+D6 check had passed; the arithmetic had not.
+
+`mvn clean verify`: 405 core + 76 profiles = 481 tests, `BUILD SUCCESS`.
+
 ## 2026-09-17 — Milestone 2 complete: the library beats a join (task 16)
 
 `jresolve-profiles-ie` gains an `endtoend/` package whose `BeatTheJoinTest`
