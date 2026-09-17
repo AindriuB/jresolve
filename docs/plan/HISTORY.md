@@ -3,6 +3,214 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-17 — Milestone 2 complete: the library beats a join (task 16)
+
+`jresolve-profiles-ie` gains an `endtoend/` package whose `BeatTheJoinTest`
+answers the charge task 08's reviewer closed milestone 1 with. The thesis is
+stated as a falsifiable claim rather than demonstrated: one test resolves the
+same records twice — once with the real pipelines, once with only equality
+substituted for the two comparators — and asserts `MATCH` at 85 points against
+`NO_MATCH` at −10. Both halves are in one test so the contrast cannot rot on
+one side while the other keeps passing.
+
+The control is deliberately generous: same normalization, same fields, same
+weights, same thresholds, equality only where the real resolver compares. A
+real SQL join would not fold a fada or a curly apostrophe for free. It is also
+handed an exact address hit and still cannot match, because the two name
+fields are correct renderings it has no way to read.
+
+**§88's two expected bands are now reached**, asserted by value. Milestone 1
+recorded both as unmet: it produced `LOW` where §88 expects an alias and
+`MEDIUM` where it expects `VERY_HIGH`. A second test bands the identical
+prepared pair through the generic comparator milestone 1 used and asserts the
+two differ, so the improvement is attributed rather than assumed. §90 resolves
+to `REVIEW` with both candidates at exactly 110 and a margin of zero, address
+category `SUBSUMED` rather than `CONFLICT`.
+
+**The suite passed on first run, so it was checked rather than trusted.**
+Removing D7 and D9 from the resolver under test turned five of eleven tests
+red, including the falsification test; the six that survived drive the
+pipelines directly or are negative cases, which is correct. This is the
+milestone-1 lesson applied deliberately for once instead of after the fact.
+
+Three wave-5 defects closed in the milestone-1 suite: the garbled sentence at
+`EndToEndResolutionTest.java:67-69` (it is the two *fuzzy* fields that net
++10, not the two exact ones), the tie test raised from two candidates to four
+in two orders, and contribution values pinned rather than categories alone.
+Its class Javadoc now records that it keeps the generic comparators
+deliberately — core cannot depend on profiles-ie — and points a reader at the
+profiles suite.
+
+**Gap found, not closed:** `MatchResult` does not carry the subsumption
+signal. `FieldContribution` holds a category, a contribution and a template
+key (D10), so a consumer reading only the result sees *that* two candidates
+tied but not that each contains the source — which is the entire explanation
+for the tie. The direction is asserted through the pipeline instead, with the
+reason written where it is asserted. Closing it means touching `result/`,
+which no task in this milestone owned.
+
+`mvn clean verify`: 393 core + 76 profiles = 469 tests, `BUILD SUCCESS`,
+commit `5f8d0e1`.
+
+## 2026-09-17 — Irish profiles land, and the module split stops being an assertion (task 15)
+
+`jresolve-profiles-ie` gains its first real content, having been a
+`package-info.java` and a POM since task 01: `IrishNameNormalizer`,
+`IrishAddressNormalizer`, `IrishNameAliases`, `IrishAddressComparator`,
+`IrishAddressPipeline` and `IrishNamePipeline`, with 65 tests. D15's split is
+now exercised rather than asserted — everything the module publishes is
+expressed in core's types, and core cannot reference it because the reactor
+would cycle.
+
+The two normalizers differ deliberately. The name normalizer removes
+apostrophes so `O'Sullivan` folds to one token and does **not** try to reach
+`Ó Súilleabháin`; a test asserts those two stay apart, and a change making
+that test fail has almost certainly made the normalizer too aggressive rather
+than fixed anything. That pair is closed in the alias table instead, which is
+D8's whole point. The address normalizer canonicalises by splitting and
+rejoining with `DefaultTokenSplitter` itself, so there is exactly one rule
+about what separates tokens.
+
+`IrishAddressComparator` runs containment first and spelling second, and is
+task 12's first out-of-module use of the opened extension points: it extends
+the now-public `AbstractNullSafeFieldComparator` and applies
+`SimilarityBands.categoryFor` rather than restating either. A test constructs
+it with stricter bands and asserts the same pair bands differently — a
+comparator that reimplemented the banding with its own constants passes every
+other test in that file and fails that one.
+
+**Three defects found while building it, two of them the implementer's own.**
+The alias table declared `Sinéad`/`Sineád` as a variant pair; both normalize
+to `sinead`, so the group collapsed to one distinct member and
+`DefaultAliasRepository` rejected it at build time. That rejection is correct
+and is now a documented guard: a pair normalization already closes does not
+belong in an alias table. Separately, the two address shapes did not converge
+on a prepared value — one kept a comma — while the Javadoc claimed they did;
+comparison was unaffected because the tokeniser drops punctuation, which is
+exactly why it would have gone unnoticed, but a prepared value is also what a
+blocking key is derived from and the form a cached candidate is held in.
+Third, a test expected `Pádraig`/`Paddy` to be a nickname; it is a derived
+pair reached through `Patrick`, so the weakest link on the path gives a
+translation — design right, expectation wrong.
+
+The tables are illustrative and say so in their first Javadoc paragraph.
+**D19's provenance question is untouched and still open**; a release must
+replace them.
+
+## 2026-09-17 — Alias and subsumption comparators land (tasks 13, 14)
+
+`field/` gains `AliasAwareFieldComparator` and `TokenSubsumptionComparator`.
+
+The alias comparator tries three arms in order — equal, repository-related,
+delegate — and consults the delegate only on the third, asserted with a
+recording delegate that must show zero invocations on the other two. The test
+that carries the point wires the delegate to return `CONFLICT` and compares
+two values sharing not one character; the comparator returns
+`ALIAS_TRANSLATION` and never asks it. An alias hit carries neither similarity
+nor frequency key: a relation read from a table is not a measurement, and the
+two sides did not agree on a value.
+
+The subsumption comparator mints two categories rather than reusing the bands
+— `SUBSUMED` for containment either way, `PARTIAL_OVERLAP` for sharing tokens
+without containment — which D3 explicitly supports. Strict containment is
+deliberately not `CONFLICT`. Both directions share one category and differ
+only in the signal, because a scoring model keys on the category and being
+less specific is equally informative whichever side is shorter. The vacuous
+case is refused: the empty set is a subset of everything, but reporting that
+as containment would manufacture agreement out of a value that says nothing.
+
+**A correction to the task's own acceptance.** It stated flatly that the
+comparator never returns `NOT_APPLICABLE`. It does, for a null combination,
+and correctly — nothing was computed there — while the test only covered
+non-null pairs, so it would have passed with the stated claim false. The
+criterion and the test name are now scoped to two present values.
+
+`FieldComparatorNullSafetyTest` was assigned to task 14 rather than both:
+its list is a manual tripwire, not a package scan, so two tasks editing it
+would have been the clash `Owns` exists to prevent. Both comparators are
+registered and the count raised to four.
+
+## 2026-09-17 — Wave 1: splitter, subsumption signal, alias repository, extension points (tasks 09, 10, 11, 12)
+
+Four dependency-free tasks, the foundation the rest of the milestone builds on.
+
+**09** gives `TokenSplitter` a production implementation after three waves of
+being flagged as a test lambda only. `DefaultTokenSplitter` splits on runs of
+anything that is neither a letter nor a digit, so one value yields the same
+tokens however its parts were punctuated. Iteration is by code point, pinned
+with U+1D400, so a letter outside the BMP is not split across its surrogate
+pair. `TokenSimilarityTest` was re-pointed at it only after confirming every
+value in that class is whitespace-separated and alphanumeric, so no assertion
+changed.
+
+**10** adds `TokenSubsumption` and `FieldEvidence.getSubsumption()` as a Java 8
+`default` method, keeping the interface additive — pinned by a test
+implementing only the three original getters. `NOT_APPLICABLE` and `NEITHER`
+are deliberately distinct: no containment computed versus computed and not
+held. `MatchEvidence.toString()`'s dead `evidence == null` branch is removed,
+with a comment saying why there is no check.
+
+**11** lands `AliasRepository` and `DefaultAliasRepository`, closing groups
+transitively at construction. The design decision worth knowing: **the alias
+kind is stored per pair, not per group.** Collapsing a merged group to one
+kind would destroy exactly what D7 wants kept. A declared pair keeps its
+declared kind; a derived pair gets the strongest available path, where a path
+is only as strong as its weakest link — a maximum-bottleneck path computed by
+unioning edges strongest-tier first, with strength running `ALIAS_VARIANT`,
+`ALIAS_NICKNAME`, `ALIAS_TRANSLATION`. The builder accepts only those three
+categories, because admitting a new kind means deciding where it sits in that
+ordering.
+
+**12** opens the field layer so a comparator can be written outside it:
+`AbstractNullSafeFieldComparator` public with a `protected` hook,
+`SimilarityBands.categoryFor` public, `Score` rejecting a null algorithm. The
+proof is a new `io.github.aindriub.jresolve.extension` test package — every
+other test of these types lives inside `field/`, where package-private access
+makes them look usable whether or not they are.
+
+**Two corrections in 12, both to claims rather than code.**
+`FieldComparatorNullSafetyTest`'s comment said reflection would silently stop
+covering a new comparator; it is the reverse, and the `hasSize` assertion is a
+tripwire on the list rather than a package scan. And `ExactFieldComparator`'s
+new Javadoc first cited "an inherited `Object.toString()`" as the shape that
+breaks the frequency key — writing the test disproved it, since the inherited
+rendering derives from `hashCode`, which any type honouring the `equals`
+contract overrides. The failing shapes are a `toString` rendering per-instance
+state, or an `equals` override without a `hashCode` override.
+
+**Planning amendments, recorded in the task files.** 12's `Owns` was
+insufficient as written: making `compareNonNull` protected forces
+`SimilarityFieldComparator` to widen its override, and no path was listed for
+the required out-of-package test. 11 specified
+`EntityResolutionConfigurationException`, which lives in `api/` and is thrown
+only by `EntityResolverBuilder`; every other constructor check in core's lower
+layers uses `IllegalArgumentException`, and throwing the former from `alias/`
+would add a dependency edge up to the top layer.
+
+## 2026-09-17 — A SessionStart hook provisions the JDK 17 toolchain for web sessions (kit)
+
+`mvn verify` could not run in a fresh Claude Code on the web container: the
+image ships JDK 21 only, and D14 pins compilation to a JDK 17 toolchain
+declared in `~/.m2/toolchains.xml`, which is deliberately not part of the
+repo. The build failed at `maven-toolchains-plugin` with "No toolchain found
+for type jdk" before reaching a single test.
+
+`.claude/hooks/session-start.sh` installs the JDK, generates
+`toolchains.xml` and warms the empty `~/.m2/repository`. It reads the required
+version from the pom's `toolchain.jdk.version` rather than restating it, and
+is a no-op unless `CLAUDE_CODE_REMOTE=true`, so local machines keep their own
+setup. Two container quirks are handled because both bit first: the apt index
+is stale, so the install 404s without an update, and third-party PPAs fail
+behind the proxy, so that update's non-zero exit must not kill the hook under
+`set -e`. A failing suite does not fail session start — the warm-up exists for
+the cache, not the verdict.
+
+`/.claude/` was ignored wholesale, which would have kept the hook out of the
+repo, and a hook only runs for future sessions if it is committed. The rule
+is now `/.claude/*` with narrow exceptions for `hooks/` and `settings.json`;
+`agents/`, `commands/`, `scripts/` and `settings.local.json` stay local as
+before.
+
 ## 2026-09-09 — Milestone 1 complete: end-to-end resolve proven, gaps recorded (task 08)
 
 `jresolve-core` gains `endtoend/`: an `EndToEndResolutionTest` that builds one
