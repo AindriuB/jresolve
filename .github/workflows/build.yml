@@ -1,0 +1,74 @@
+# Runs the same command a contributor runs: `mvn clean verify`.
+#
+# Reaching `verify` is the point rather than `test`. Two gates live there and
+# `mvn test` would skip both: animal-sniffer's java18 signature check, which is
+# what actually enforces the Java 8 target, and the javadoc doclint gate that
+# fails on a reference which no longer resolves.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: mvn clean verify (Java 8 target, JDK 17 toolchain)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The version is read from the POM rather than restated here, so this
+      # workflow and the build cannot drift. The same sed lives in
+      # .claude/hooks/session-start.sh for the same reason.
+      - name: Read the required toolchain JDK from the POM
+        id: toolchain
+        run: |
+          version="$(sed -n 's:.*<toolchain\.jdk\.version>\([0-9][0-9]*\)</toolchain\.jdk\.version>.*:\1:p' pom.xml | head -1)"
+          if [ -z "$version" ]; then
+            echo "could not read toolchain.jdk.version from pom.xml" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build toolchain JDK: $version"
+
+      # Maven itself needs JDK 9+ (maven-enforcer-plugin says why: --release
+      # does not exist before 9). The toolchain below is what compiles, and is
+      # a separate thing from the JDK running Maven.
+      - name: Set up JDK ${{ steps.toolchain.outputs.version }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ steps.toolchain.outputs.version }}
+          cache: maven
+
+      # maven-toolchains-plugin resolves against ~/.m2/toolchains.xml, which is
+      # deliberately not in the repo: without this step the build fails at
+      # "No toolchain found for type jdk".
+      - name: Provision the toolchain
+        run: |
+          mkdir -p "$HOME/.m2"
+          cat > "$HOME/.m2/toolchains.xml" <<XML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <toolchains xmlns="http://maven.apache.org/TOOLCHAINS/1.1.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/TOOLCHAINS/1.1.0 http://maven.apache.org/xsd/toolchains-1.1.0.xsd">
+            <toolchain>
+              <type>jdk</type>
+              <provides>
+                <version>${{ steps.toolchain.outputs.version }}</version>
+              </provides>
+              <configuration>
+                <jdkHome>${JAVA_HOME}</jdkHome>
+              </configuration>
+            </toolchain>
+          </toolchains>
+          XML
+
+      - name: mvn clean verify
+        run: mvn --batch-mode --no-transfer-progress clean verify
