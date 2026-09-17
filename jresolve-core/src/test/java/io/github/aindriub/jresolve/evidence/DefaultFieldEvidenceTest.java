@@ -42,4 +42,45 @@ class DefaultFieldEvidenceTest {
 
         assertThat(evidence.toString()).doesNotContain("sensitive-token");
     }
+
+    @Test
+    void theThreeArgumentConstructorDefaultsToNotApplicable() {
+        DefaultFieldEvidence evidence =
+                new DefaultFieldEvidence(ComparisonCategory.EXACT, null, null);
+
+        assertThat(evidence.getSubsumption()).isSameAs(TokenSubsumption.NOT_APPLICABLE);
+    }
+
+    @Test
+    void theFourArgumentConstructorCarriesTheSubsumption() {
+        DefaultFieldEvidence evidence = new DefaultFieldEvidence(
+                ComparisonCategory.MEDIUM, 0.8, null, TokenSubsumption.RIGHT_SUBSUMES_LEFT);
+
+        assertThat(evidence.getSubsumption()).isSameAs(TokenSubsumption.RIGHT_SUBSUMES_LEFT);
+    }
+
+    @Test
+    void rejectsNullSubsumption() {
+        assertThatThrownBy(() -> new DefaultFieldEvidence(ComparisonCategory.EXACT, null, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("subsumption");
+    }
+
+    @Test
+    void toStringIncludesTheSubsumption() {
+        DefaultFieldEvidence evidence = new DefaultFieldEvidence(
+                ComparisonCategory.MEDIUM, 0.8, null, TokenSubsumption.EQUIVALENT);
+
+        assertThat(evidence.toString()).contains("EQUIVALENT");
+    }
+
+    @Test
+    void toStringStillExcludesTheFrequencyKey() {
+        // The frequency key is a normalized field value. Adding a field to
+        // toString is exactly when this property gets broken by accident.
+        DefaultFieldEvidence evidence = new DefaultFieldEvidence(
+                ComparisonCategory.EXACT, null, "widget-7", TokenSubsumption.EQUIVALENT);
+
+        assertThat(evidence.toString()).doesNotContain("widget-7");
+    }
 }
