@@ -193,6 +193,16 @@ class BeatTheJoinTest {
         throw new AssertionError("no contribution for field " + field);
     }
 
+    private static TokenSubsumption subsumptionOf(
+            ScoredCandidate<CandidatePerson> scored, String field) {
+        for (FieldContribution contribution : scored.getContributions()) {
+            if (field.equals(contribution.getField())) {
+                return contribution.getSubsumption();
+            }
+        }
+        throw new AssertionError("no contribution for field " + field);
+    }
+
     private static List<String> rankedIds(MatchResult<CandidatePerson> result) {
         List<String> ids = new ArrayList<>();
         for (ScoredCandidate<CandidatePerson> scored : result.getCandidates()) {
@@ -346,22 +356,62 @@ class BeatTheJoinTest {
 
     @Test
     void bothCandidatesSubsumeTheSourceInTheSameDirection() {
-        // The direction is asserted through the pipeline rather than through
-        // the result, because MatchResult does not carry it: a
-        // FieldContribution holds a category, a contribution and a template
-        // key (D10), and the subsumption signal is not among them. So a
-        // consumer reading only the result can see *that* the two candidates
-        // tied, but not that each contains the source. Worth knowing; the
-        // assertion below covers the mechanism this test is really about.
-        String source = ADDRESS_LINES.prepare(Collections.singletonList("Dublin"));
-        IrishAddressComparator comparator = new IrishAddressComparator();
+        // Asserted through MatchResult, which is the point. Task 16 had to
+        // reach past the result into the pipeline for this, because
+        // FieldContribution carried a category and no containment signal —
+        // so a consumer could see *that* two candidates tied and not that
+        // each contains the source. Task 18 closed that; this is the test
+        // that proves it from a consumer's seat.
+        SourcePerson source = new SourcePerson("Seán", "Ó Súilleabháin",
+                LocalDate.of(1985, 6, 14), Collections.singletonList("Dublin"));
+        CandidatePerson dublinFour = new CandidatePerson("registered-4", "Seán",
+                "Ó Súilleabháin", LocalDate.of(1985, 6, 14), "Dublin 4");
+        CandidatePerson dublinEight = new CandidatePerson("registered-8", "Seán",
+                "Ó Súilleabháin", LocalDate.of(1985, 6, 14), "Dublin 8");
 
-        FieldEvidence versusFour = comparator.compare(source, ADDRESS_SINGLE.prepare("Dublin 4"));
-        FieldEvidence versusEight = comparator.compare(source, ADDRESS_SINGLE.prepare("Dublin 8"));
+        MatchResult<CandidatePerson> result = resolverWith(realBuilder())
+                .resolve(source, Arrays.asList(dublinFour, dublinEight));
 
-        assertThat(versusFour.getSubsumption()).isSameAs(TokenSubsumption.LEFT_SUBSUMES_RIGHT);
-        assertThat(versusEight.getSubsumption()).isSameAs(versusFour.getSubsumption());
-        assertThat(versusFour.getSimilarity()).isEqualTo(versusEight.getSimilarity());
+        assertThat(result.getCandidates()).hasSize(2);
+        for (ScoredCandidate<CandidatePerson> scored : result.getCandidates()) {
+            assertThat(subsumptionOf(scored, "address"))
+                    .isSameAs(TokenSubsumption.LEFT_SUBSUMES_RIGHT);
+        }
+    }
+
+    @Test
+    void aConsumerCanTellAGenuineTieFromACoincidentalOne() {
+        // Two candidates tied on score. Reading only the score and the
+        // category, these are indistinguishable from any other tie; the
+        // containment signal is what says the tie is genuine — each
+        // candidate contains the source and neither contradicts it — rather
+        // than two unrelated records happening to total the same.
+        SourcePerson source = new SourcePerson("Seán", "Ó Súilleabháin",
+                LocalDate.of(1985, 6, 14), Collections.singletonList("Dublin"));
+        MatchResult<CandidatePerson> result = resolverWith(realBuilder()).resolve(source, Arrays.asList(
+                new CandidatePerson("registered-4", "Seán", "Ó Súilleabháin",
+                        LocalDate.of(1985, 6, 14), "Dublin 4"),
+                new CandidatePerson("registered-8", "Seán", "Ó Súilleabháin",
+                        LocalDate.of(1985, 6, 14), "Dublin 8")));
+
+        assertThat(result.getDecision()).isSameAs(Decision.REVIEW);
+        assertThat(result.getMargin()).isEqualTo(0.0);
+        for (ScoredCandidate<CandidatePerson> scored : result.getCandidates()) {
+            assertThat(subsumptionOf(scored, "address")).isNotSameAs(TokenSubsumption.NEITHER);
+            assertThat(subsumptionOf(scored, "address")).isNotSameAs(TokenSubsumption.NOT_APPLICABLE);
+        }
+    }
+
+    @Test
+    void aFieldWhoseComparatorIgnoresTokensReportsNotApplicableThroughTheResult() {
+        // The distinction survives the trip to the consumer: the name fields
+        // are compared by a comparator that does not reason about tokens, and
+        // say so, rather than claiming containment was computed and failed.
+        MatchResult<CandidatePerson> result = resolverWith(realBuilder())
+                .resolve(sourceWithoutDateOfBirth(), Collections.singletonList(registeredInEnglish()));
+
+        assertThat(subsumptionOf(result.getCandidates().get(0), "lastName"))
+                .isSameAs(TokenSubsumption.NOT_APPLICABLE);
     }
 
     // --- The alias layer does not over-match --------------------------------

@@ -77,11 +77,18 @@ public final class RuleBasedScorer implements MatchScorer {
         List<FieldContribution> contributions = new ArrayList<FieldContribution>();
         for (Map.Entry<String, FieldEvidence> entry : evidence.getFields().entrySet()) {
             String field = entry.getKey();
-            ComparisonCategory category = entry.getValue().getCategory();
+            FieldEvidence fieldEvidence = entry.getValue();
+            ComparisonCategory category = fieldEvidence.getCategory();
             double weight = weightFor(field, category);
             total += weight;
+            // The subsumption travels with the contribution. The weight is
+            // keyed on the category alone — containment in either direction
+            // is equally informative — but a consumer reading the result
+            // needs the direction to tell a genuine tie from a coincidental
+            // one.
             contributions.add(new FieldContribution(field, category, weight,
-                    "scoring.rule.contribution." + field + '.' + category.getName()));
+                    "scoring.rule.contribution." + field + '.' + category.getName(),
+                    fieldEvidence.getSubsumption()));
         }
 
         Score score = new Score(total, ScoreScale.POINTS, ALGORITHM, null);

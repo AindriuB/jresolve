@@ -186,18 +186,20 @@ public final class EntityResolverBuilder<S, C> {
      * scorer's {@link MatchScorer#scale()} (D6): a mismatch fails the build
      * rather than misinterpreting a score at {@code resolve()} time.
      *
-     * <p><strong>Contract, not enforcement:</strong> {@link
-     * MatchDecisionEngine} exposes neither the thresholds nor the scale it
-     * was actually constructed with, so this check inspects only the {@code
-     * DecisionThresholds} instance passed here — it cannot see what the
-     * {@code decisionEngine(...)} you configured is really using at {@code
-     * resolve()} time. The instance passed to this method must therefore be
-     * the exact same instance (or an equivalent one built to the same
-     * scale) that was used to construct the {@code MatchDecisionEngine}
-     * passed to {@link #decisionEngine}; if they diverge, {@code build()}
-     * can pass while {@code resolve()} interprets scores against the wrong
-     * scale. There is no in-library way to prevent that divergence until
-     * {@code MatchDecisionEngine} exposes its own scale.
+     * <p><strong>Enforced, where the engine allows it.</strong> When the
+     * configured {@link MatchDecisionEngine} declares its own thresholds via
+     * {@link MatchDecisionEngine#declaredThresholds()}, {@code build()}
+     * checks them against the scorer's scale <em>and</em> against the value
+     * passed here, and fails on either mismatch. Configuring one set of
+     * thresholds while constructing the engine with another is therefore no
+     * longer buildable. Equal-but-separately-constructed instances are fine:
+     * the comparison is by value, not identity.
+     *
+     * <p>The residual hole is narrow and named: an engine whose
+     * {@code declaredThresholds()} returns null cannot be inspected, so for
+     * that engine alone the caller's own discipline is what keeps the
+     * configured thresholds and the applied ones in agreement. Every engine
+     * in this library declares.
      */
     public EntityResolverBuilder<S, C> thresholds(DecisionThresholds thresholds) {
         this.thresholds = thresholds;
@@ -268,6 +270,25 @@ public final class EntityResolverBuilder<S, C> {
         }
         if (decisionEngine == null) {
             throw new EntityResolutionConfigurationException("decision engine must not be null");
+        }
+        // D6: inspect the object that actually decides, not only the
+        // thresholds handed to this builder. An engine that declares nothing
+        // cannot be checked, and the contract on thresholds(...) is all that
+        // protects such a caller.
+        DecisionThresholds applied = decisionEngine.declaredThresholds();
+        if (applied != null) {
+            if (applied.getScale() != scorer.scale()) {
+                throw new EntityResolutionConfigurationException(
+                        "decision engine applies thresholds on scale (" + applied.getScale()
+                                + ") but the scorer produces scores on scale (" + scorer.scale()
+                                + "); the engine would interpret every score against the wrong scale");
+            }
+            if (!applied.equals(thresholds)) {
+                throw new EntityResolutionConfigurationException(
+                        "thresholds(...) and the configured decision engine declare different "
+                                + "thresholds; build() validates the former while the engine applies "
+                                + "the latter, so configure both from one DecisionThresholds value");
+            }
         }
 
         return new DefaultEntityResolver<S, C>(

@@ -66,14 +66,36 @@ class of error caught *before* merge — an acceptance criterion that was flatly
 false (task 14), a Javadoc claim the test disproved (task 12), and an alias
 entry whose two spellings normalization already closed (task 15).
 
+## Milestone 3 — consolidation complete, capability not yet planned
+
+Taking the two largest open correctness and explanation gaps before adding
+capability. Both landed at 490 tests (412 core + 78 profiles),
+`BUILD SUCCESS`.
+
+- [x] **17 — A decision engine declares the thresholds it applies.** Closes
+  D6. `build()` now inspects the object that actually decides and rejects
+  both a wrong-scale engine and one whose thresholds diverge from the
+  declared ones.
+- [x] **18 — The explanation carries why two candidates tied.**
+  `FieldContribution` carries the subsumption signal, so a consumer reading
+  `MatchResult` can tell a genuine tie from a coincidental one.
+
+**Not yet planned: D5 (Fellegi-Sunter).** Prior odds, frequency-adjusted `u`,
+`TermFrequencyTable`, and `docs/calibration.md`. Deliberately not decomposed
+yet — its shape depends on the frequency-key work, and planning it before 17
+and 18 landed would have been speculative. It is now the obvious next
+milestone, and better positioned than it was: task 12 documented the
+`toString`-consistent-with-`equals` requirement frequency keys depend on, and
+agreement is no longer confined to exact matches.
+
 ## Notes for implementers
 
 - `jresolve-core` needs a JDK 17 toolchain (`~/.m2/toolchains.xml`, not part
   of the repo) — see `docs/architecture.md#building`. In Claude Code on the
   web this is provisioned automatically by
   `.claude/hooks/session-start.sh`; on a local machine it is still manual.
-- `mvn clean verify` baseline at milestone 2's close is 469 tests,
-  `BUILD SUCCESS`.
+- `mvn clean verify` baseline at milestone 3's consolidation close is 490
+  tests (412 core + 78 profiles), `BUILD SUCCESS`.
 
 ## Known gaps (non-blocking, no task owns these)
 
@@ -82,13 +104,6 @@ reopen the review. Closed items are not listed; see `HISTORY.md`.
 
 ### Raised in milestone 2
 
-- **`MatchResult` does not carry the subsumption signal.** `FieldContribution`
-  holds a category, a contribution and a template key (D10), and the
-  subsumption signal is not among them — so a consumer reading only the
-  result sees *that* two candidates tied but not that each contains the
-  source, which is the entire explanation for the tie. Task 16 asserts the
-  direction through the pipeline instead. Closing it means touching
-  `result/`, which no milestone-2 task owned.
 - **D19's alias-corpus provenance is now urgent rather than theoretical.**
   `IrishNameAliases` ships illustrative, hand-written tables and says so in
   its first Javadoc paragraph. A release that treats them as reference data
@@ -109,6 +124,18 @@ reopen the review. Closed items are not listed; see `HISTORY.md`.
   repository carries both, so the behaviour is right and the name is
   narrower than the use. Rename or add a surname-shaped factory when
   something else touches that file.
+
+### Raised in milestone 3
+
+- **The explanation projection is narrow by choice, so each new signal needs
+  its own carrying.** Task 18 put the subsumption on `FieldContribution`
+  rather than exposing `MatchEvidence` from `ScoredCandidate`, because the
+  evidence carries a frequency key — a prepared value D10 keeps out of
+  anything a consumer logs. The cost is that the next signal worth explaining
+  needs the same deliberate step; it will not arrive for free. That is the
+  intended trade, recorded so it is not mistaken for an oversight. The
+  accessor guard in `FieldContributionTest` states the criterion any addition
+  must meet.
 
 ### Open questions for the maintainer
 
@@ -136,15 +163,14 @@ reopen the review. Closed items are not listed; see `HISTORY.md`.
   `MatchResult`'s constructor rather than return a result.
 - `@SafeVarargs` on a reifiable `Object[]...` in `ThresholdDecisionEngineTest`
   (task 06) is redundant.
-- **D6 is not fully honoured** (task 07). `MatchDecisionEngine` exposes
-  neither its scale nor its thresholds, so `EntityResolverBuilder.build()`
-  validates the `DecisionThresholds` passed to `.thresholds(...)` against the
-  scorer, but that object never reaches the engine that actually decides. A
-  caller passing two different scale-matching instances gets a clean
-  `build()` and a resolver that silently interprets scores on the wrong
-  scale. What ships is a Javadoc contract that both the tester and reviewer
-  confirmed is sufficient when followed, but weaker than a construction-time
-  exception. Still the largest open correctness gap.
+- **D6's residual hole** (narrowed by task 17, not fully closed). `build()`
+  now inspects an engine that declares its thresholds and rejects a wrong
+  scale or a divergent configuration. An engine whose
+  `declaredThresholds()` returns null still cannot be checked, so for that
+  engine alone the caller's discipline is what keeps the configured and
+  applied thresholds in agreement. Every engine in this library declares, so
+  this only bites a consumer's own implementation. Narrow and named rather
+  than open.
 - `DefaultEntityResolver`'s constructor has a branch silently skipping null
   rules, dead now that `build()` rejects them before construction.
 - `FieldDefinition.isRequired()`, set by `EntityResolverBuilder.required(...)`,

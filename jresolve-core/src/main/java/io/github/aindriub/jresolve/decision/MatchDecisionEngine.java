@@ -23,4 +23,32 @@ public interface MatchDecisionEngine<C> {
      *     when {@code candidates} is empty
      */
     MatchResult<C> decide(List<ScoredCandidate<C>> candidates);
+
+    /**
+     * The thresholds this engine actually applies, or null if it does not
+     * decide by thresholds or declines to say.
+     *
+     * <p>This exists so that {@link
+     * io.github.aindriub.jresolve.api.EntityResolverBuilder#build()} can
+     * inspect the object that really decides, rather than only the
+     * {@code DecisionThresholds} it was handed separately. Without it, a
+     * caller can configure one set of thresholds and construct the engine
+     * with another: the build succeeds and every later decision is made
+     * against thresholds nobody declared — on the wrong scale entirely, in
+     * the worst case.
+     *
+     * <p><strong>Returning null has a cost.</strong> {@code build()} cannot
+     * check an engine that declares nothing, so for such an engine the
+     * caller's own discipline is the only thing keeping the configured
+     * thresholds and the applied ones in agreement. An engine that can
+     * declare its thresholds should.
+     *
+     * <p>A {@code default} rather than an abstract method, so that adding it
+     * does not break an existing implementation.
+     *
+     * @return the applied thresholds, or null when none are declared
+     */
+    default DecisionThresholds declaredThresholds() {
+        return null;
+    }
 }
