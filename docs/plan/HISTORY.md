@@ -58,7 +58,9 @@ invariant lives in the resolver and in a test rather than being
 unrepresentable. Two is manageable. A third would be the point to stop and
 reshape the type, and `PLAN.md` says so now rather than after someone adds one.
 
-**Where the project stands.** Six milestones, 33 tasks, 621 tests. The planning
+**Where the project stands.** Six milestones, 621 tests, and 31 completed
+tasks across IDs 01–32 — task 28 is the open gate and never had a task file,
+so `tasks/retired/` holds 31 rather than 32. The planning
 file's only unchecked item is task 28 — a licensed alias corpus — which blocks
 publication and nothing else, and which no amount of code closes. Two gaps
 remain deliberately open and correctly stated: prose that goes stale without
