@@ -190,6 +190,40 @@ gate failed the build and doclint was never reached. Task 32's answer was that
 there was nothing to do. None of the three would have surfaced from a green
 build.
 
+## Milestone 7 — usable by someone who is not us
+
+Every milestone so far made the library better. None made it *reachable*: there
+is no README, no CI, and the POMs carry none of the metadata Maven Central
+requires. A consumer today would have to read the tests to learn the API and
+build from source to use it.
+
+**The thesis, stated so it can fail:** a developer who has never seen this
+repository can go from the front page to a working resolver without opening a
+test, and a maintainer can publish a release without hand-assembling anything.
+
+Three tasks, file sets disjoint. Implemented CI first, deliberately: the other
+two then land under a check rather than on a claim.
+
+- [ ] **34 — CI.** `mvn clean verify` on every push and pull request, with the
+  JDK 17 toolchain the build requires. Every test figure in every PR of this
+  project so far has been a local run; this is the largest single gap between
+  this repository and one anybody would trust unattended.
+- [ ] **33 — README as a developer guide.** Exact matching first, then fuzzy,
+  then aliases and subsumption, then Fellegi-Sunter. **Every example is
+  compiled and run by a test**, because a README that drifts from the API is
+  worse than none — it is a confident wrong answer. Neutral examples live in
+  core's tests, domain-shaped ones in `jresolve-profiles-ie`, per the
+  vocabulary rule.
+- [ ] **35 — Maven Central readiness.** The metadata Central rejects a bundle
+  for: name, description, url, licence, developers, SCM; plus sources and
+  javadoc jars and detached signatures, behind a profile so an ordinary build
+  neither signs nor slows.
+
+**What this milestone does not do.** It does not publish. Task 28's release
+gate still holds — `IrishNameAliases` ships illustrative tables, and D19 says
+nothing publishes until a licensed corpus replaces them. This milestone makes
+publishing *possible*, which is a different thing from making it *permitted*.
+
 ## Notes for implementers
 
 - `jresolve-core` needs a JDK 17 toolchain (`~/.m2/toolchains.xml`, not part
