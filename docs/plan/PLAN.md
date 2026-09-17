@@ -154,39 +154,38 @@ contract had not anticipated, and both findings are about the checks rather
 than the code — see the gaps below. The third, task 29, closed a coverage gap
 that had made a whole test class blind to the behaviour it existed to pin.
 
-## Milestone 6 — the rules check themselves
+## Milestone 6 — complete
 
-Wave 1 of milestone 5 found that three of this project's own rules were not
-checked by anything, and had been quietly violated for milestones. This closes
-the five gaps it raised.
+Three tasks (30–32) closing the five gaps milestone 5 wave 1 raised. 602 tests
+(524 core + 78 profiles), `BUILD SUCCESS`.
 
-**The thesis, stated so it can fail:** every rule this repository states about
-itself either fails the build when violated, or says in its own text that it
-cannot. No rule sits in the middle, asserted but unchecked.
+- [x] **30 — The domain-vocabulary rule is enforced by the build.**
+  `DomainVocabularyTest` reads core's own sources and fails naming file and
+  line, on `ModuleBoundaryTest`'s model. Takes three of the five gaps together,
+  because they were one rule's problem.
+- [x] **31 — A stale cross-file reference fails the build.** doclint at
+  `verify`, `show=private`, over test sources as well as main, scoped
+  `all,-missing`.
+- [x] **32 — Core pins its own behaviour.** No tests added: the audit found
+  nothing unpinned, which is the result rather than the absence of one.
 
-Three tasks, file sets disjoint, safe in parallel.
+**The verdict.** The thesis was that every rule this repository states about
+itself either fails the build when violated or says in its own text that it
+cannot. That now holds for the domain-vocabulary rule, which is the one that
+had been quietly violated since task 01 — it fails the build, and
+`docs/conventions.md` lists what it cannot catch. It does not hold generally,
+and the honest position is that two of the five gaps are narrower or
+differently shaped than when they were raised rather than gone.
 
-- [ ] **30 — The domain-vocabulary rule is enforced by the build.** Closes
-  three gaps at once, because they are one rule's problem: the collision with
-  rule 6's synthetic-data statement, the incomplete token list, and the absence
-  of any enforcement. A `DomainVocabularyTest` in core reads the module's own
-  sources and fails on a violation, the way `ModuleBoundaryTest` asserts what a
-  test there honestly can.
-- [ ] **31 — A stale cross-file reference fails the build.** Javadoc runs with
-  doclint as part of `verify`, so a `{@link}` to a renamed type breaks rather
-  than rotting. Core currently produces **zero** javadoc warnings, so the gate
-  costs nothing to adopt and only constrains what comes next.
-- [ ] **32 — Core pins its own behaviour.** The three `default` methods on core
-  interfaces are behaviour living on the interface itself, and the most likely
-  place for a behaviour whose only coverage is elsewhere. Each gets a test
-  proving a non-overriding implementation receives the documented fallback.
-
-**What this milestone cannot do, and says so.** A checker over source text
-cannot tell a domain concept from an English word — `ComparisonCategory:42`
-says "the given name" meaning the supplied one, and no regex distinguishes that
-from a forename. Nor can any build gate catch a comment that describes
-neighbouring code wrongly while naming nothing. Both limits belong in the
-rules' own text rather than in a reviewer's memory.
+**What writing the gates was worth, separately from the gates.** Each of the
+three tasks found something by trying to prove its own work rather than by
+running it. Task 30's first checker missed every accessor, because requiring a
+word boundary means `getLastName` never matches — the same hole the hand-run
+grep had, which is part of why the rule went unenforced. Task 31's first proof
+was a false positive: the planted stale link contained "Person", so task 30's
+gate failed the build and doclint was never reached. Task 32's answer was that
+there was nothing to do. None of the three would have surfaced from a green
+build.
 
 ## Notes for implementers
 
@@ -194,8 +193,12 @@ rules' own text rather than in a reviewer's memory.
   of the repo) — see `docs/architecture.md#building`. In Claude Code on the
   web this is provisioned automatically by
   `.claude/hooks/session-start.sh`; on a local machine it is still manual.
-- `mvn clean verify` baseline at milestone 5 wave 1's close is 598 tests
-  (520 core + 78 profiles), `BUILD SUCCESS`.
+- `mvn clean verify` baseline at milestone 6's close is 602 tests
+  (524 core + 78 profiles), `BUILD SUCCESS`.
+- Two gates now fail the build on things a reviewer used to catch by eye:
+  `DomainVocabularyTest` on domain vocabulary in core, and javadoc doclint on a
+  reference that no longer resolves. Both are described where the rules they
+  enforce are written, not here.
 
 ## Known gaps (non-blocking, no task owns these)
 
@@ -244,45 +247,62 @@ reopen the review. Closed items are not listed; see `HISTORY.md`.
   it does mean a consumer cannot get a trustworthy probability out of the box,
   and anyone planning a release should know that is by design.
 
-### Raised in milestone 5, wave 1
+### Raised in milestone 5 wave 1, resolved by milestone 6
 
-Three of these are about the *checks* rather than the code, which is what wave
-1 mostly found.
+Three closed, one narrowed, one corrected. Milestone 6 took all five; it did
+not close all five, and the two below say so rather than being ticked.
 
-- **The domain-vocabulary rule collides with rule 6.** `CLAUDE.md` rule 6
-  requires a synthetic-data statement on a fixture, and the natural way to
-  write one is "none names a real person" — which
-  `docs/conventions.md`'s vocabulary rule forbids. Task 27 wrote "none
-  describes anyone real" instead, which works, but the collision is structural
-  and the next fixture hits it. Either the vocabulary rule should exempt the
-  synthetic-data statement explicitly, or rule 6 should prescribe wording that
-  satisfies both. Deciding it once is cheaper than each author inventing a
-  dodge.
-- **The vocabulary grep is a proxy, and an incomplete one.** `dateOfBirth`
-  passes it — "dob" is not a word inside that string — so the check misses the
-  spelled-out form of a concept the rule bans. Task 27 renamed it anyway, on
-  the spirit rather than the letter. The token list will keep drifting behind
-  the vocabulary it is trying to catch; treat a clean grep as necessary and not
-  sufficient.
-- **Nothing enforces the vocabulary grep at build time.** It is run by hand,
-  which means it is run when someone remembers. Task 27 named this out of
-  scope deliberately — it is its own task, with its own failure modes around
-  what a build-time check does to a module that legitimately needs the
-  vocabulary. Worth doing before the rule has been quietly violated for another
-  three milestones, which is how it got here.
-- **Nothing checks a claim one file makes about another.** Task 27's rename
-  made `FellegiSunterResolutionTest`'s Javadoc false — it said this package's
-  shared fixtures "would name a person if imported here", which stopped being
-  true the moment they were renamed. It was caught by reading, and nothing in
-  the build would have caught it. This is the same class of defect as milestone
-  1's invisible-character literal: correct code, a comment that lies.
-- **Coverage can concentrate in the wrong module.** Task 29 found that core's
-  `DefaultAliasRepositoryTest` mixed variant with translation and never
-  translation with nickname, so all 31 of its tests stayed green under a
-  reorder of exactly those tiers — the real coverage lived in
-  `jresolve-profiles-ie`. Closed for this case by three new tests. The general
-  risk is not closed: a core behaviour exercised only through a profile is a
-  core behaviour core does not pin.
+- [closed] **The collision with rule 6, the incomplete token list, and the
+  absence of enforcement.** One rule's problem, taken together by task 30.
+  `DomainVocabularyTest` reads core's own sources and fails naming file and
+  line; `docs/conventions.md` prescribes the synthetic-data wording rather than
+  exempting the statement; the token list now catches the camelCase forms the
+  hand-run grep missed.
+
+- **Narrowed, not closed: nothing checks a claim one file makes about
+  another.** Task 31's doclint gate fails the build on a `{@link}` to something
+  that no longer exists, at `show=private` and over test sources as well as
+  main. But the defect that raised this gap named no type — it was prose
+  asserting what a neighbouring file's fixtures looked like, and doclint is
+  indifferent to prose. The mechanically checkable subset is closed; **the gap
+  itself remains open** and is the same class as milestone 1's invisible
+  character: correct code, a comment that lies.
+
+- **Corrected: the risk is combinations, not modules.** The gap said a core
+  behaviour exercised only through a profile is one core does not pin. Task 32
+  tested that directly — mutate a core behaviour, run core's tests alone — and
+  core caught all four probes, while all three `default` methods turned out to
+  be pinned already. What task 29 actually hit was narrower and harder: a
+  **combination**, a translation edge merged with a nickname edge, a pair of
+  categories no core test put together. Every individual behaviour was covered
+  and none of that coverage said anything about the pair. Combinations grow
+  faster than anyone writes tests, and no single-line mutation probe finds a
+  missing one. Unsolved, and now correctly stated.
+
+### Raised in milestone 6
+
+- **A planning measurement was wrong, and only implementation caught it.**
+  Milestone 6 was planned on a reading that core emitted zero javadoc
+  warnings; that run had no doclint configured, so it measured the lenient
+  default rather than the gate. The real figure under `doclint=all` is 100.
+  The plan was amended in the task file with its reason rather than quietly
+  corrected — but the general point stands: a measurement taken to size a task
+  should exercise the thing the task will turn on, not its neighbour.
+- **100 javadoc `missing` warnings sit unaddressed by decision, not
+  oversight.** `no @param`, `no @return`, `no comment`. Adopting doclint's
+  `missing` group would be a documentation-completeness policy this project
+  has never chosen, and task 31 deliberately did not choose it on the
+  project's behalf. Worth deciding once; the gate is configured `all,-missing`
+  until somebody does.
+- **`DomainVocabularyTest` cannot police its own file.** It holds known-bad
+  strings as fixtures, so it skips itself. Obfuscating the samples would test
+  an obfuscation rather than the rule. The hole is one file wide and named in
+  the test's own Javadoc.
+- **`getDOB` escapes the vocabulary checker.** `dob` is the one token still
+  needing a word boundary, so its capitalised camelCase form passes. Recorded
+  in `docs/conventions.md` alongside the other limits rather than fixed,
+  because every fix here trades one false negative for a false positive
+  somewhere else.
 
 ### Answered after milestone 4
 

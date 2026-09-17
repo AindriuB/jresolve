@@ -3,6 +3,88 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-17 — Milestone 6: the rules check themselves, and two of the five gaps turn out to be differently shaped (tasks 30, 31, 32)
+
+Three tasks against the five gaps milestone 5 wave 1 raised. 602 tests (524
+core + 78 profiles), `BUILD SUCCESS`. Three gaps closed, one narrowed, one
+corrected — and the two that did not close say so rather than being ticked.
+
+**30 — the domain-vocabulary rule is enforced by the build.**
+`DomainVocabularyTest` reads core's own sources and fails naming file and line,
+on `ModuleBoundaryTest`'s model: it asserts what it honestly can and states in
+its Javadoc what a checker in its position cannot. Sources rather than compiled
+classes, because the rule covers Javadoc and Javadoc is not in the bytecode.
+It took three of the five gaps together because they were one rule's problem
+rather than three.
+
+The collision with rule 6 is resolved by prescribing the wording — a fixture
+writes "none describes anyone real" — rather than exempting the statement. An
+exemption is a hole the checker implements and the reader remembers; a
+sanctioned phrase costs one sentence in `docs/conventions.md` and keeps the
+check absolute. It is a convention, so it is the maintainer's to reverse.
+
+**Writing that checker found two bugs in it, both shared with the grep it
+replaced.** Requiring a word boundary silently missed every accessor: there is
+no boundary before `Last` in `getLastName`, so the pattern never matched a
+getter — which is part of why the rule went unenforced for six milestones. And
+the checker flagged itself, reporting fourteen violations in its own fixtures;
+it now skips that one file and says why, since obfuscating the samples would
+test an obfuscation rather than the rule. One real violation was left in the
+tree by task 27 and is fixed here: `EndToEndResolutionTest:403` still said
+"first name" where the field is now `label`, invisible to the documented grep
+because it only matched camelCase.
+
+**31 — a stale cross-file reference fails the build**, and three corrections
+to my own plan along the way, each found by trying to prove the gate rather
+than trusting it.
+
+The planning measurement was invalid. Milestone 6 was planned on a reading that
+core emits zero javadoc warnings, taken from a run with no doclint configured —
+so it measured the lenient default rather than the gate. The real figure under
+`doclint=all` is 100, every one of them `no @param`, `no @return` or `no
+comment`, and none a broken reference. The gate is scoped `all,-missing`:
+documentation completeness is a policy this project has never adopted, and is a
+different decision from catching staleness.
+
+The first configuration would have caught the motivating defect on neither
+count — javadoc's default scope is `protected`, so a stale link on a private
+member is never looked at, and `javadoc-no-fork` reads main sources only, while
+the defect lived in a test class. Fixed with `show=private` and a second
+`test-javadoc-no-fork` execution, each demonstrated separately because the
+executions run in POM order and the first failure hides the second.
+
+And the first proof was a false positive: the planted stale link was `{@link
+ExternalPerson}`, which contains "Person", so task 30's gate failed the build at
+surefire and doclint was never reached. Re-running with a neutral name passed,
+which is how the `show=private` hole surfaced at all. A gate proven by a failure
+that came from somewhere else is not proven.
+
+**32 — no tests added, and that is the result.** All three `default` methods on
+core interfaces were already pinned, two of them better than the task file
+asked for. So the hypothesis was tested directly by task 29's own method —
+mutate a core behaviour, run core's tests alone, see whether core catches it or
+only profiles does. Four probes, four catches.
+
+**Which corrects the gap rather than closing it.** What task 29 hit was not
+"core behaviour covered only in profiles": every individual behaviour was
+pinned. What was missing was a *combination* — a translation edge merged with
+a nickname edge, a pair of categories no core test put together — and complete
+single-behaviour coverage said nothing about the pair. That is harder than the
+gap as written, because combinations grow faster than anyone writes tests and
+no single-line probe finds a missing one.
+
+**The verdict.** The thesis was that every rule this repository states about
+itself either fails the build when violated or says in its own text that it
+cannot. It holds for the domain-vocabulary rule, which is the one that had been
+quietly violated since task 01. It does not hold generally, and two of the five
+gaps are narrower or differently shaped rather than gone. Counting five closed
+would have been the easy and wrong summary.
+
+**The pattern across all three.** Each task found its real finding by trying to
+prove its own work, not by running it: the checker that missed every accessor,
+the gate proven by the wrong failure, the audit whose answer was that there was
+nothing to do. A green build reported none of them.
+
 ## 2026-09-17 — Milestone 5 wave 1: composite rules per group, neutral core fixtures, reordered alias tiers (tasks 26, 27, 29)
 
 Three disjoint tasks, 598 tests (520 core + 78 profiles), `BUILD SUCCESS`.
