@@ -52,16 +52,35 @@ the data, not about the code.
 
 What it offers is a declaration. `DefaultFellegiSunterModel.Builder.composite`
 lets a consumer name two or more fields as one comparison, and
-`FellegiSunterScorer` then weighs that group **once** — contributing the
-smallest weight among its present members.
+`FellegiSunterScorer` then weighs that group **once**.
 
-The smallest, deliberately. When the scorer cannot know how much of the signal
-is shared, the group should claim no more than its least favourable member.
-Averaging the members, or taking the strongest, would both claim more than the
-evidence supports, and overconfidence is the failure mode already in play.
+How it combines them is declared per group, because correlation strength is a
+property of the fields in a group rather than of the model holding them — one
+model may hold a tightly coupled group and a barely coupled one, and a single
+setting could not describe both.
+
+| `CompositeRule` | The group contributes | Defensible when |
+|---|---|---|
+| `SMALLEST` *(default)* | its least favourable member's weight | always; it is the conservative answer |
+| `AVERAGE` | the mean of its present members' weights | the correlation has been measured and is moderate |
+| `STRONGEST` | its most favourable member's weight | the shared signal is known to be small |
+
+`SMALLEST` is the default deliberately. When the scorer cannot know how much of
+the signal is shared, the group should claim no more than its least favourable
+member, and overconfidence is the failure mode already in play.
+
+**There is no measurement procedure for this choice, and that is the thing to
+know before changing it.** `u` can be counted from a corpus and `m` estimated
+by expectation-maximisation, but nothing in this library or outside it tells
+you which of these three rules matches your data. A consumer who has not
+measured the within-group correlation has no basis to move off `SMALLEST`, and
+a knob without a procedure is one somebody turns until the score looks better.
 
 A suppressed member still appears in the explanation, with a template key
-recording that it was counted as part of a composite rather than ignored.
+recording that it was counted as part of a composite rather than ignored. Under
+`AVERAGE` the member carrying the group's weight is also marked, because the
+value it reports is the group's and not its own — reporting it as an ordinary
+contribution would claim that field measured something it did not.
 
 ## Where each number comes from
 

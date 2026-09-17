@@ -61,8 +61,8 @@ public final class DefaultAliasRepository implements AliasRepository {
     private static final List<ComparisonCategory> STRENGTH_DESCENDING = Collections.unmodifiableList(
             Arrays.asList(
                     ComparisonCategory.ALIAS_VARIANT,
-                    ComparisonCategory.ALIAS_NICKNAME,
-                    ComparisonCategory.ALIAS_TRANSLATION));
+                    ComparisonCategory.ALIAS_TRANSLATION,
+                    ComparisonCategory.ALIAS_NICKNAME));
 
     /**
      * Joins two values into one map key. A control character cannot appear in

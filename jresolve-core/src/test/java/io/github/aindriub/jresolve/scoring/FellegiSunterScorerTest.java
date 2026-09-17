@@ -282,6 +282,109 @@ class FellegiSunterScorerTest {
         assertThat(result.getScore().getValue()).isEqualTo(3.0, within(1e-9));
     }
 
+    @Test
+    void theOneArgumentCompositeIsExactlySmallest() {
+        double implicit = new FellegiSunterScorer(
+                model().composite(Arrays.asList("code", "tier")).build())
+                .score(bothExact()).getScore().getValue();
+        double explicit = new FellegiSunterScorer(
+                model().composite(Arrays.asList("code", "tier"), CompositeRule.SMALLEST).build())
+                .score(bothExact()).getScore().getValue();
+
+        assertThat(implicit).isEqualTo(explicit, within(1e-9));
+        assertThat(implicit).isEqualTo(1.0, within(1e-9));
+    }
+
+    @Test
+    void aStrongestCompositeContributesItsLargestMemberWeight() {
+        // code is log2(0.8/0.1) = 3.0, tier is log2(0.5/0.25) = 1.0.
+        double total = new FellegiSunterScorer(
+                model().composite(Arrays.asList("code", "tier"), CompositeRule.STRONGEST).build())
+                .score(bothExact()).getScore().getValue();
+
+        assertThat(total).isEqualTo(3.0, within(1e-9));
+    }
+
+    @Test
+    void anAverageCompositeContributesTheMeanOfItsPresentMembers() {
+        // (3.0 + 1.0) / 2 = 2.0, between the smallest and the strongest.
+        double total = new FellegiSunterScorer(
+                model().composite(Arrays.asList("code", "tier"), CompositeRule.AVERAGE).build())
+                .score(bothExact()).getScore().getValue();
+
+        assertThat(total).isEqualTo(2.0, within(1e-9));
+    }
+
+    @Test
+    void anAverageOverOnePresentMemberIsThatMembersWeight() {
+        // The degenerate case, where an off-by-one in the denominator hides:
+        // one present member averages to itself, not to half of itself.
+        double total = new FellegiSunterScorer(
+                model().composite(Arrays.asList("code", "tier"), CompositeRule.AVERAGE).build())
+                .score(evidence(true, "code", "EXACT")).getScore().getValue();
+
+        assertThat(total).isEqualTo(3.0, within(1e-9));
+    }
+
+    @Test
+    void twoGroupsInOneModelEachUseTheirOwnRule() {
+        // The whole point of declaring the rule per group. Weights are
+        // code 3.0, tier 1.0, alpha 2.0, bravo 4.0.
+        //   {code, tier}   STRONGEST -> 3.0
+        //   {alpha, bravo} SMALLEST  -> 2.0
+        //                              = 5.0
+        // Read globally this would be 7.0 (all STRONGEST) or 3.0 (all
+        // SMALLEST), so this assertion fails if the rule is not per group.
+        DefaultFellegiSunterModel model = model()
+                .probabilities("alpha", ComparisonCategory.EXACT, 0.8, 0.2)
+                .probabilities("bravo", ComparisonCategory.EXACT, 0.8, 0.05)
+                .composite(Arrays.asList("code", "tier"), CompositeRule.STRONGEST)
+                .composite(Arrays.asList("alpha", "bravo"), CompositeRule.SMALLEST)
+                .build();
+
+        double total = new FellegiSunterScorer(model)
+                .score(evidence(true, "code", "EXACT", "tier", "EXACT",
+                        "alpha", "EXACT", "bravo", "EXACT"))
+                .getScore().getValue();
+
+        assertThat(total).isEqualTo(5.0, within(1e-9));
+    }
+
+    @Test
+    void everyRuleRecordsItsSuppressedMemberInTheExplanation() {
+        for (CompositeRule rule : CompositeRule.values()) {
+            ScoringResult result = new FellegiSunterScorer(
+                    model().composite(Arrays.asList("code", "tier"), rule).build())
+                    .score(bothExact());
+
+            int suppressed = 0;
+            for (FieldContribution contribution : result.getContributions()) {
+                if (contribution.getTemplateKey().contains("compositeSuppressed")) {
+                    suppressed++;
+                    assertThat(contribution.getContribution()).isEqualTo(0.0);
+                }
+            }
+            assertThat(suppressed).as("suppressed members under %s", rule).isEqualTo(1);
+        }
+    }
+
+    @Test
+    void anAveragedCarrierSaysTheWeightIsTheGroupsAndNotItsOwn() {
+        // 2.0 is not code's weight and not tier's. Reporting it under the
+        // ordinary contribution key would claim code measured something it
+        // did not, so the key has to say the value belongs to the group.
+        ScoringResult result = new FellegiSunterScorer(
+                model().composite(Arrays.asList("code", "tier"), CompositeRule.AVERAGE).build())
+                .score(bothExact());
+
+        for (FieldContribution contribution : result.getContributions()) {
+            if ("code".equals(contribution.getField())) {
+                assertThat(contribution.getContribution()).isEqualTo(2.0, within(1e-9));
+                assertThat(contribution.getTemplateKey()).contains("compositeCombined");
+            }
+        }
+    }
+
     // ------------------------------------------------------- housekeeping
 
     @Test

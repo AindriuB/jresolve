@@ -213,6 +213,55 @@ class DefaultAliasRepositoryTest {
                 .isSameAs(ComparisonCategory.ALIAS_VARIANT);
     }
 
+    @Test
+    void aDerivedPairBottleneckedOnANicknameReportsTheNickname() {
+        // The case the tier order is actually about, and the one this class
+        // did not cover before task 29: a translation edge and a nickname edge
+        // on one path. D7 ranks translation above nickname, so the nickname is
+        // the weakest link and the derived pair claims it. Every other merge
+        // test here mixes variant with translation, which is why reordering
+        // the middle two tiers left all of them green.
+        DefaultAliasRepository repository = translationThenNickname();
+
+        assertThat(repository.relation("alpha", "charlie"))
+                .isSameAs(ComparisonCategory.ALIAS_NICKNAME);
+    }
+
+    @Test
+    void bothDeclaredPairsSurviveATranslationNicknameMerge() {
+        // The per-pair storage again: neither declared edge is degraded by the
+        // derived pair sitting between them.
+        DefaultAliasRepository repository = translationThenNickname();
+
+        assertThat(repository.relation("alpha", "bravo"))
+                .isSameAs(ComparisonCategory.ALIAS_TRANSLATION);
+        assertThat(repository.relation("bravo", "charlie"))
+                .isSameAs(ComparisonCategory.ALIAS_NICKNAME);
+    }
+
+    @Test
+    void theStrongerOfATranslationAndANicknamePathWins() {
+        // Maximum-bottleneck on the pair of tiers task 29 reordered: alpha
+        // reaches charlie through two nickname edges, and directly by a
+        // translation. The translation is the stronger bottleneck, so it
+        // decides.
+        DefaultAliasRepository repository = DefaultAliasRepository.builder()
+                .group(Arrays.asList("alpha", "bravo"), ComparisonCategory.ALIAS_NICKNAME)
+                .group(Arrays.asList("bravo", "charlie"), ComparisonCategory.ALIAS_NICKNAME)
+                .group(Arrays.asList("alpha", "charlie"), ComparisonCategory.ALIAS_TRANSLATION)
+                .build();
+
+        assertThat(repository.relation("alpha", "charlie"))
+                .isSameAs(ComparisonCategory.ALIAS_TRANSLATION);
+    }
+
+    private static DefaultAliasRepository translationThenNickname() {
+        return DefaultAliasRepository.builder()
+                .group(Arrays.asList("alpha", "bravo"), ComparisonCategory.ALIAS_TRANSLATION)
+                .group(Arrays.asList("bravo", "charlie"), ComparisonCategory.ALIAS_NICKNAME)
+                .build();
+    }
+
     // ------------------------------------------------------------ rejection
 
     @Test

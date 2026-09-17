@@ -102,4 +102,19 @@ public interface FellegiSunterModel {
      * @return the declared groups, never null; empty when none were declared
      */
     Collection<Set<String>> compositeGroups();
+
+    /**
+     * How the given composite group combines its members' weights.
+     *
+     * <p>A {@code default} method so that an existing implementation of this
+     * interface keeps compiling and keeps its behaviour: a model that does not
+     * override it declares every group {@link CompositeRule#SMALLEST}, which is
+     * what every model did before the rule was selectable.
+     *
+     * @param group one of the groups returned by {@link #compositeGroups()}
+     * @return the rule for that group, never null
+     */
+    default CompositeRule compositeRuleFor(Set<String> group) {
+        return CompositeRule.SMALLEST;
+    }
 }
