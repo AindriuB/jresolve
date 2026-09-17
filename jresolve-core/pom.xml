@@ -11,6 +11,12 @@
   </parent>
 
   <artifactId>jresolve-core</artifactId>
+
+  <name>jresolve-core</name>
+  <description>
+    The resolution engine: field comparison, normalization, similarity metrics, alias equivalence, scoring and explainable decisions. Knows nothing about any particular domain.
+  </description>
+  <url>https://github.com/AindriuB/jresolve</url>
   <packaging>jar</packaging>
 
   <dependencies>

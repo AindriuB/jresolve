@@ -11,6 +11,12 @@
   </parent>
 
   <artifactId>jresolve-profiles-ie</artifactId>
+
+  <name>jresolve-profiles-ie</name>
+  <description>
+    Irish domain profile for jresolve: name and address pipelines, and illustrative alias tables. Optional, and separate from the engine so that core carries no domain vocabulary.
+  </description>
+  <url>https://github.com/AindriuB/jresolve</url>
   <packaging>jar</packaging>
 
   <dependencies>
