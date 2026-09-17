@@ -3,6 +3,138 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-17 — Milestone 4 complete: Fellegi-Sunter ships, and its end-to-end test earns its keep (tasks 23, 24)
+
+`FellegiSunterResolutionTest` drives the probabilistic path through a whole
+resolver from a consumer's seat, and `docs/calibration.md` lands — the file
+D11 names, which four classes cite.
+
+**The verdict task 24 owed.** The probabilistic path gives a consumer one
+thing the rule-based one cannot, and it is *not* the probability: agreement on
+a common value scores lower than agreement on a rare one, shown as an outcome
+rather than a number by `aCommonAgreementCanFallBelowTheMatchThreshold` — the
+same shape of agreement that MATCHes on a rare value fails to match on a
+near-universal one, with the no-corpus control beside it so the claim is
+attributable. The probability is not a second win; it is arithmetic on numbers
+nobody here measured. What the scale buys is real but narrower: a margin on
+`LOG2_LIKELIHOOD_RATIO` is the log ratio of two candidates' likelihoods, so it
+means the same thing at every score level, which a points margin does not.
+Nothing shipped is calibrated and the milestone does not claim otherwise.
+
+**The defect the end-to-end test caught, which is what it was for.**
+Configuring a corpus for one field inflated every other field enormously:
+`tier` scored 18.9 bits instead of 1.0. The model adjusted `u` for every field
+carrying a frequency key, and `TermFrequencyTable` answers its *floor* for a
+field it never saw — and the floor is its **rarest** answer, so an uncovered
+field produced the largest possible weight. Task 19's own Javadoc had called
+that "a thin answer rather than a programming error"; it is the loudest answer
+available.
+
+The part worth remembering: **the ordering claim still held under the
+defect.** Rare still outscored common. A test asserting only the ordering
+would have passed and shipped it. The hand-derived absolute value is what
+failed — which is the concrete payoff of this project's rule that expectations
+are derived by hand rather than read off a run.
+
+Fixed with the maintainer's agreement: `TermFrequencyTable.covers(field)`, and
+the model adjusts only where the corpus actually covers the field. Regression
+tests sit in the two owning tasks' files, with a control asserting a covered
+field is still adjusted.
+
+**A second structural finding.** The resolver never hands a scorer incomplete
+evidence — `DefaultEntityResolver:110` always builds it `complete = true`, and
+a rule's `REJECT` returns null at `:101`. So `FellegiSunterScorer`'s
+unscorable path is unreachable end to end; the real consumer of
+`MatchEvidence.isComplete()` is `CandidateRule`, which sees partial evidence
+between tiers at `:102`. Both are now asserted and the criterion was amended
+in the task file rather than quietly dropped.
+
+Task 17's D6 guard ran on a second scale for the first time: until this
+scorer existed the library had one scale, so that check was guarding a case
+that could not arise.
+
+**On rule 7.** Task 23 wrote a doc, which `CLAUDE.md` reserves to `scribe`.
+The exception is noted rather than passed over silently: D11 names
+`docs/calibration.md` as a required design artefact and four classes cite it,
+so it is content decided by whoever understands the model rather than a record
+of work done. That is an argument; the rule is the maintainer's to amend.
+
+`mvn clean verify`: 504 core + 78 profiles = 582 tests, `BUILD SUCCESS`.
+
+## 2026-09-17 — The Fellegi-Sunter model and scorer land (tasks 20, 21)
+
+`DefaultFellegiSunterModel` carries the `m`/`u` tables, the optional prior and
+the composite declaration; `FellegiSunterScorer` sums `log2(m/u)` on the
+`LOG2_LIKELIHOOD_RATIO` scale.
+
+**Nothing bent.** Task 21 owed a judgement on whether `MatchScorer`,
+`ScoringResult` or `FieldContribution` had to change to accommodate a
+probabilistic scorer. None did. That is evidence the shape was right rather
+than a non-finding: this is the first *second* implementation of
+`MatchScorer`. Two parts earned their keep — `ScoringResult`'s
+scorable/unscorable split was built for D4's partial-evidence case in task 06
+and had one user until now, and `FieldContribution` took task 18's
+five-argument constructor unchanged, so the subsumption signal reaches a
+consumer through this scorer without anyone having planned it.
+
+One place the existing contract was **better than assumed**: `getScore()` on
+an unscorable result throws rather than returning null, so there is no number
+to pick up by accident. The implementer's test asserted null; the assertion
+was wrong and the design was right.
+
+**Two design decisions, made and flagged.** Missingness is declared, never
+inferred (§45): every category is either configured or explicitly ignored, and
+one that is neither throws rather than scoring zero — a silent neutral is the
+same guess §45 forbids wearing a different hat. And a composite group
+contributes the **smallest** weight among its present members, not the sum,
+average or strongest: D11 names overconfidence as the failure mode, so when
+the scorer cannot know how much signal is shared, the group should claim no
+more than its least favourable member.
+
+Prior odds distinguish "nobody said" from "the odds are even", so a scorer
+cannot publish a posterior nobody stood behind.
+
+**An acceptance criterion was wrong and was amended.** Task 20 asked for a
+clamp on the frequency-adjusted `u`. There is none: `TermFrequencyTable`
+already returns a value within `[floor, 1]` with `floor > 0`, so the range
+holds by construction, and a clamp would be the defect this register records
+against task 07's D6 check — a guard that fires correctly while protecting
+nothing. Dead instance state in the model (a `configuredFields` set copied but
+never read) was also removed.
+
+Every expected weight is hand-derived from probabilities chosen so the
+arithmetic is exact: `0.8/0.1` is exactly +3.0, `0.5/0.25` exactly +1.0,
+`0.1/0.8` exactly −3.0. The frequency test states the consequence plainly —
+agreement on a value nine records in ten share scores **negative**, because
+`m < u` there.
+
+## 2026-09-17 — Wave 1 of D5: frequency table, training representation, extension points (tasks 19, 22)
+
+`TermFrequencyTable` counts a corpus one observation at a time and reports a
+key's relative frequency within a field. The **floor** is the point rather
+than a detail: an unseen key returns it, never zero, because a corpus is a
+sample and a zero would make `u` zero and `log2(m/u)` infinite.
+
+Its Javadoc states why `ExactFieldComparator`'s
+`toString`-consistent-with-`equals` requirement exists — it exists for this
+table. Where it does not hold, two occurrences of one value produce two keys
+counted once each and every value looks rare.
+
+`LabelledMatchExample` and `UnlabelledMatchExample` replace §93's single
+`MatchTrainingExample`. The unlabelled form is the substantive half: `m` is
+normally estimated by EM over unlabelled pairs, so a labelled-only
+representation hands a consumer the shape that fits the method they are least
+likely to be able to use. Both are named away from the specification's name
+deliberately — with two types, neither can be "the" training example — and a
+Javadoc line records the rename.
+
+`FeatureExtractor` and `ProbabilityModel` ship with **no implementation in
+main sources**, which is the intent rather than an omission: D17 holds every
+model family behind v1 while the interfaces ship so a future model does not
+force changes to `FieldDefinition`, `FieldPipeline` or `MatchEvidence`. A test
+composes trivial stand-ins through the whole path to show the extension point
+is usable rather than merely declared.
+
 ## 2026-09-17 — The explanation carries why two candidates tied (task 18)
 
 Milestone 2 gave the library a signal saying *why* two candidates are hard to
