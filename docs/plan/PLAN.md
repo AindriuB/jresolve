@@ -117,33 +117,59 @@ value is what failed.
 
 ## Milestone 5 — planned, not started
 
-Four items, all arising from decisions taken after milestone 4 rather than from
-new capability. No task files exist for these yet.
+Five items. Four are code and carry task files in `docs/plan/tasks/`; the fifth
+is a release gate that no amount of code closes. None of this is new
+capability — every item is the consequence of a decision taken after milestone
+4, which is why the milestone has no thesis of its own to prove.
+
+### Wave 1 — three disjoint file sets, safe in parallel
+
+- [ ] **26 — The composite combination rule becomes selectable per group.**
+  `composite(fields, rule)` takes `SMALLEST | AVERAGE | STRONGEST` on each
+  declared group, with `composite(fields)` still meaning `SMALLEST`, so existing
+  behaviour is unchanged. Per group rather than per model because correlation
+  strength is a property of the fields, not of the model holding them.
+  `docs/calibration.md` gains the paragraph saying there is no measurement
+  procedure for the choice, and that a consumer who has not measured the
+  within-group correlation should leave it alone. Owns `scoring/`.
+- [ ] **27 — Core's test fixtures lose their domain vocabulary.**
+  `docs/conventions.md` now binds `src/test` as well as `src/main`. Measured
+  rather than estimated: **112 hits across exactly four files**, all in
+  `endtoend/` — `EndToEndResolutionTest` (88), `ExternalPerson` (12), `Owner`
+  (11), `FellegiSunterResolutionTest` (1). Two of those are type names, so this
+  renames the fixture types as well as their members. `src/main` is already
+  clean under the same grep. Until this lands **the rule outruns the code** —
+  the one inconsistency in this repository that is deliberate and dated rather
+  than unnoticed. Owns core's `endtoend/`.
+- [ ] **29 — The alias strength tiers are reordered.** `ALIAS_VARIANT` >
+  `ALIAS_TRANSLATION` > `ALIAS_NICKNAME`, per D7. One line at
+  `DefaultAliasRepository:61` and seven test files behind it — including
+  `BeatTheJoinTest`, the milestone-2 thesis test, which is why this is a task
+  rather than an edit. Owns `alias/` and the alias-asserting tests in both
+  modules.
+
+### Wave 2 — after wave 1, because it reads what wave 1 renames
 
 - [ ] **25 — Explainable rejection.** `MatchResult` carries the candidates a
   `CandidateRule` vetoed and the rule that vetoed each. Today a veto returns
   null from `DefaultEntityResolver:101` and the candidate vanishes, so a
   consumer cannot tell one that scored badly from one that was never scored.
   D4 is now explicit that dropping is correct; this closes the explanation gap
-  dropping leaves.
-- [ ] **26 — The composite combination rule becomes selectable.** One setting on
-  `DefaultFellegiSunterModel.Builder` — `SMALLEST | AVERAGE | STRONGEST`,
-  defaulting to `SMALLEST`, so existing behaviour is unchanged.
-  `docs/calibration.md` gains the paragraph saying there is no measurement
-  procedure for the choice, and that a consumer who has not measured the
-  within-group correlation should leave it alone.
-- [ ] **27 — Core's test fixtures lose their domain vocabulary.**
-  `docs/conventions.md` now binds `src/test` as well as `src/main`. Measured
-  rather than estimated: **112 hits across exactly four files**, all in
-  `endtoend/` — `EndToEndResolutionTest` (88), `ExternalPerson` (12), `Owner`
-  (11), `FellegiSunterResolutionTest` (1). Two of those are type names, so this
-  is a rename of the fixture types as well as their members. `src/main` is
-  already clean under the same grep. Until this lands **the rule outruns the
-  code** — the one inconsistency in this repository that is deliberate and
-  dated rather than unnoticed.
-- [ ] **28 — A sourced alias corpus.** Not a code task: it needs a licensed
-  source for the Irish/English and nickname tables. D19 makes this a release
-  gate, so it blocks publication rather than any other work.
+  dropping leaves. Sequenced second because it touches `result/` and `api/` and
+  its assertions live in the `endtoend/` files task 27 is renaming.
+
+### No wave — a gate, not a task
+
+- [ ] **28 — A sourced alias corpus.** Not code: it needs a licensed source for
+  the Irish/English and nickname tables. D19 makes this a release gate, so it
+  blocks publication and nothing else. Deliberately carries no task file,
+  because there is no file set to own and no acceptance a build can check.
+
+**What this milestone does not do.** No blocking or candidate index, no
+estimator, no phonetics (D19 settled that), and no new resolution capability of
+any kind. A consumer's results do not change, with one exception: task 29 moves
+derived alias pairs between categories, so a model with different `m`/`u` per
+alias category will score some pairs differently.
 
 ## Notes for implementers
 

@@ -210,13 +210,27 @@ assigns each its weight. An FS model can then learn that a nickname agreement
 and a translation agreement carry different evidence, which a single `strength`
 number cannot represent.
 
-**The ordering is confirmed.** `DefaultAliasRepository` resolves a mixed merge
-by maximum-bottleneck path, ranking `ALIAS_VARIANT` above `ALIAS_NICKNAME` above
-`ALIAS_TRANSLATION` by how much each claims about closeness. The case for
-swapping the middle two was put and rejected: a translation crosses a language
-boundary where transcription conventions vary, which is a weaker claim than a
-within-language diminutive. The builder rejects any category outside those three
-precisely because admitting one means placing it in that order.
+**The ordering is `ALIAS_VARIANT` > `ALIAS_TRANSLATION` > `ALIAS_NICKNAME`.**
+`DefaultAliasRepository` resolves a mixed merge by maximum-bottleneck path, so
+these tiers decide what a *derived* pair claims. The middle two were swapped by
+the maintainer after milestone 4, reversing the order the code shipped with.
+
+The case for the swap: a translation is a name-identity mapping — Pádraig and
+Patrick are one name in two languages — where a nickname is many-to-one and
+optional, since every Paddy is a Patrick but most Patricks are never Paddy. On
+that reading a translation claims more about closeness than a diminutive does.
+
+The case against is recorded here because it is the stronger objection and
+should not have to be rediscovered: Irish anglicisation is frequently arbitrary
+rather than semantic. Siobhán was anglicised to Judith and to Julia, which are
+not renderings of the same name in any meaningful sense. Wherever that pattern
+dominates, a translation edge is the loosest of the three and this ordering
+overstates it. The maintainer weighed the objection and chose the swap; a later
+reviewer whose data is dominated by arbitrary anglicisations should read this
+paragraph as the reason to revisit, not as an oversight.
+
+The builder rejects any category outside those three precisely because admitting
+one means placing it in that order.
 
 ## D8 — Ó Súilleabháin is an alias problem, not a normalization one
 
@@ -293,15 +307,22 @@ states the assumption and where it fails, `FellegiSunterScorer`'s Javadoc
 repeats it, and the model supports declaring two fields as one composite
 comparison for the cases where a consumer wants to handle it.
 
-**The combination rule is one setting on the model builder, defaulting to the
+**The combination rule is declared per composite group, defaulting to the
 smallest member.** A composite group contributes the smallest weight among its
 present members: when the scorer cannot know how much of the signal is shared,
 the group should claim no more than its least favourable member, and
 overconfidence is the failure mode already in play. Averaging the members or
 taking the strongest are defensible, so the rule is selectable rather than
-fixed. Per-group configuration was considered and rejected on API cost; the
-known cost of one global setting is that two groups with different correlation
-strengths must share one answer.
+fixed — and it is selected **on the group, not on the model**, because
+correlation strength is a property of the fields in a group rather than of the
+model that holds them. A model whose surname/address group is tightly coupled
+and whose two-part-identifier group is barely coupled cannot express both with
+one setting, and forcing it to would push one of the two toward exactly the
+overconfidence this entry exists to name.
+
+`composite(fields)` keeps its meaning and defaults to `SMALLEST`, so nothing
+already built changes; `composite(fields, rule)` is the overload that says
+otherwise.
 
 The caveat belongs here rather than being discovered later. `u` is measurable
 from a corpus and `m` is estimable by EM, but there is no standard procedure for

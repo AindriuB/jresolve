@@ -29,18 +29,30 @@ veto overridable by a score. Dropping keeps a veto final. What dropping costs is
 that a vetoed candidate is invisible in `MatchResult`; that is an explanation
 gap, now task 25, rather than an argument for changing the path.
 
-**The alias strength ordering stands.** `ALIAS_VARIANT` > `ALIAS_NICKNAME` >
-`ALIAS_TRANSLATION`. The case for swapping the middle two was put —
-Pádraig/Patrick is close to a deterministic mapping, where Patrick/Paddy is
-many-to-one and optional — and rejected by the domain reviewer, on the ground
-that a translation crosses a language boundary where transcription conventions
-vary.
+**The alias strength ordering is swapped to `ALIAS_VARIANT` >
+`ALIAS_TRANSLATION` > `ALIAS_NICKNAME`**, reversing what the code shipped with.
+Decided twice: confirmed as-is first, then reopened and swapped. The case for is
+that a translation is a name-identity mapping across languages where a nickname
+is many-to-one and optional. The case against was put by this session and
+overruled — Irish anglicisation is often arbitrary rather than semantic
+(Siobhán→Judith, →Julia), which would make a translation edge the loosest of
+the three. Both arguments are in D7 so the objection is not rediscovered from
+scratch. This is the only decision in the pass that carries a code change: task
+29, one line at `DefaultAliasRepository:61` and seven test files behind it,
+`BeatTheJoinTest` among them.
 
-**The composite combination rule becomes selectable rather than fixed.** One
-setting on the model builder — `SMALLEST | AVERAGE | STRONGEST`, defaulting to
-`SMALLEST`, so nothing already shipped changes. Per-group configuration was
-considered and rejected on API cost, with the cost of that choice recorded:
-two groups of differing correlation strength must share one answer. The caveat
+**The illustrative alias accessor is not renamed.** Proposed alongside the
+release gate and declined: the Javadoc already marks the tables illustrative in
+its first paragraph, and task 28 replaces them outright, so a rename now is a
+rename twice.
+
+**The composite combination rule becomes selectable per group.**
+`composite(fields, rule)` takes `SMALLEST | AVERAGE | STRONGEST` on each
+declared group; `composite(fields)` still means `SMALLEST`, so nothing already
+shipped changes. A single global setting was taken first and reversed the same
+day: correlation strength is a property of the fields in a group, not of the
+model that holds them, so a model with one tightly-coupled group and one barely
+coupled group cannot express both with a single answer. The caveat
 is in D11 and belongs in `calibration.md` — `u` is measurable and `m` is
 estimable, but nothing tells a consumer how to choose a combination rule, and a
 knob without a procedure is one somebody turns until the score looks better.
