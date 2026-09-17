@@ -176,4 +176,40 @@ class TermFrequencyTableTest {
         assertThat(table.frequencyOf("code", "key500")).isEqualTo(0.001);
         assertThat(table.frequencyOf("code", "absent")).isEqualTo(TermFrequencyTable.DEFAULT_FLOOR);
     }
+
+    // ------------------------------------------------------------- coverage
+
+    @Test
+    void reportsWhetherItCoversAField() {
+        TermFrequencyTable table = skewedCorpus();
+
+        assertThat(table.covers("code")).isTrue();
+        assertThat(table.covers("neverCounted")).isFalse();
+    }
+
+    @Test
+    void anEmptyTableCoversNothing() {
+        assertThat(TermFrequencyTable.builder().build().covers("code")).isFalse();
+    }
+
+    @Test
+    void coversRejectsNull() {
+        assertThatThrownBy(() -> skewedCorpus().covers(null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void anUncoveredFieldIsIndistinguishableFromARareKeyByFrequencyAlone() {
+        // Why covers() has to exist. Both answers are the floor, but they
+        // mean different things: one is "this value is rare in a corpus I
+        // have", the other "I have no corpus here at all". A caller that
+        // cannot tell them apart reads the second as maximal rarity and
+        // produces the largest possible weight for a field it knows nothing
+        // about.
+        TermFrequencyTable table = skewedCorpus();
+
+        assertThat(table.frequencyOf("code", "neverSeen"))
+                .isEqualTo(table.frequencyOf("neverCounted", "alpha"));
+        assertThat(table.covers("code")).isNotEqualTo(table.covers("neverCounted"));
+    }
 }

@@ -72,7 +72,14 @@ public final class DefaultFellegiSunterModel implements FellegiSunterModel {
     public double uProbability(String field, ComparisonCategory category, String frequencyKey) {
         String key = pairKey(requireField(field), requireCategory(category));
         requireConfigured(field, category, key);
-        if (frequencies == null || frequencyKey == null) {
+        if (frequencies == null || frequencyKey == null || !frequencies.covers(field)) {
+            // No corpus, no agreed value, or no corpus *for this field*: the
+            // flat configured u is the honest answer. Adjusting on an
+            // uncovered field would read the table's floor as a frequency,
+            // and the floor is its rarest answer — so a consumer who supplied
+            // a corpus for one field would get wildly overconfident weights
+            // on every other. Found end to end by task 24, where an uncovered
+            // field scored 18.9 bits instead of 1.0.
             return uByPair.get(key);
         }
         // u is P(agreement | non-match), and for a value drawn from a

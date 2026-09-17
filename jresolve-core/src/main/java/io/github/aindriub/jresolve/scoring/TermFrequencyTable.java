@@ -87,12 +87,36 @@ public final class TermFrequencyTable {
     }
 
     /**
+     * Whether the corpus supplied any observation for this field.
+     *
+     * <p>A caller needs this because {@link #frequencyOf} answers the floor
+     * for an uncovered field, and a floor is the <em>rarest</em> answer
+     * available — which, fed into {@code u}, produces the largest possible
+     * weight. Treating "no corpus for this field" as "every value in it is
+     * maximally rare" is the loudest reading, not the thinnest, so a caller
+     * must be able to tell the two apart before using a frequency at all.
+     *
+     * @throws IllegalArgumentException if {@code field} is null
+     */
+    public boolean covers(String field) {
+        if (field == null) {
+            throw new IllegalArgumentException("field must not be null");
+        }
+        Long total = totalsByField.get(field);
+        return total != null && total > 0L;
+    }
+
+    /**
      * The observed relative frequency of a key within a field.
      *
-     * <p>Never zero and never below the floor. A field the corpus never
-     * covered returns the floor rather than throwing — a model may ask about
-     * a field no corpus was supplied for, and that is a thin answer rather
-     * than a programming error.
+     * <p>Never zero and never below the floor.
+     *
+     * <p>A field the corpus never covered also returns the floor rather than
+     * throwing. <strong>Check {@link #covers} before treating that as a
+     * frequency.</strong> The floor is the rarest answer this table gives, so
+     * an uncovered field yields the largest weight rather than a neutral one
+     * — a caller that skips the check gets confident nonsense for every field
+     * its corpus happened to miss.
      *
      * @param field the field name, never null
      * @param key   an already-normalized value, never null

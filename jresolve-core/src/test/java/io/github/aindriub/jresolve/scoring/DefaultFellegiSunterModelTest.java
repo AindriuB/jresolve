@@ -297,4 +297,31 @@ class DefaultFellegiSunterModelTest {
         assertThatThrownBy(() -> first.mProbability("tier", ComparisonCategory.EXACT))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void anUncoveredFieldFallsBackToTheFlatConfiguredU() {
+        // The defect task 24 caught end to end. The corpus covers "code" and
+        // not "tier", and the table answers its floor for an uncovered field
+        // — so adjusting on it would read 1e-6 as a frequency and give "tier"
+        // roughly 19 bits instead of 1. A partial corpus must not inflate
+        // every field it happens to miss.
+        DefaultFellegiSunterModel model = configured()
+                .probabilities("tier", ComparisonCategory.EXACT, 0.5, 0.25)
+                .frequencies(skewedCorpus())
+                .build();
+
+        assertThat(model.uProbability("tier", ComparisonCategory.EXACT, "gold")).isEqualTo(0.25);
+    }
+
+    @Test
+    void aCoveredFieldIsStillAdjusted() {
+        // The control: the fallback must not disable the adjustment where a
+        // corpus genuinely exists.
+        DefaultFellegiSunterModel model = configured()
+                .probabilities("tier", ComparisonCategory.EXACT, 0.5, 0.25)
+                .frequencies(skewedCorpus())
+                .build();
+
+        assertThat(model.uProbability("code", ComparisonCategory.EXACT, "alpha")).isEqualTo(0.9);
+    }
 }
