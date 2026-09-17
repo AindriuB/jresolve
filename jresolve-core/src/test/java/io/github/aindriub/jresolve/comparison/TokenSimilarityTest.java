@@ -2,21 +2,15 @@ package io.github.aindriub.jresolve.comparison;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 class TokenSimilarityTest {
 
-    private static final TokenSplitter WHITESPACE_SPLITTER = value -> {
-        if (value.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return Arrays.asList(value.trim().split("\\s+"));
-    };
-
+    // The production splitter, not a lambda. Every value in this class is
+    // whitespace-separated and alphanumeric, so the tokens are identical to
+    // the ad-hoc splitter this replaced and no assertion below changes.
     private final TokenSimilarity metric =
-            new TokenSimilarity(new JaroWinklerSimilarity(), WHITESPACE_SPLITTER);
+            new TokenSimilarity(new JaroWinklerSimilarity(), new DefaultTokenSplitter());
 
     @Test
     void bothNullArgumentsAreEqual() {

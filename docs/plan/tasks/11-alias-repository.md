@@ -28,10 +28,30 @@ comparator.
 - [ ] Merging two groups that share a member yields one group; a test asserts the merged group's size and that every member sees every other.
 - [ ] A builder adds groups with a `ComparisonCategory`, and is the only way to construct the default repository. The repository is immutable once built and safe for concurrent reads; the Javadoc says so.
 - [ ] When a transitive merge joins groups declared with **different** categories, the resulting relation is resolved by a rule the Javadoc states and a test pins. Do not leave this to insertion order.
-- [ ] Construction rejects a null or empty group, a null member and a null category, with `EntityResolutionConfigurationException` naming the constraint but never a member value.
+- [ ] Construction rejects a null or empty group, a null member and a null category, with `IllegalArgumentException` naming the constraint but never a member value. See the amendment below — the plan originally specified the wrong exception type.
 - [ ] Lookups are on already-normalized values; the Javadoc states the repository never applies its own normalization and that a caller passing a raw value will miss (D7).
 - [ ] Lookup is not linear in the number of groups; a test constructs a repository with at least a thousand groups and asserts a lookup still resolves. Cite the structure in Javadoc rather than measuring a time.
 - [ ] No type, member or Javadoc word in this package names a person, name, address, date of birth or country. Test fixtures use neutral tokens (`alpha`, `beta`); the real tables are task 15's, in the profiles module.
+
+## Planning amendment (at implementation)
+
+The plan specified `EntityResolutionConfigurationException` for construction
+failures. That is wrong on two counts, and the acceptance criterion above is
+corrected to `IllegalArgumentException`:
+
+- That exception lives in `api/` and is thrown by exactly one class,
+  `api/EntityResolverBuilder.java`. Throwing it from `alias/` would add a
+  dependency edge from a low-level data package up to the top layer, for no
+  gain.
+- Every other constructor-time check in core's lower layers uses
+  `IllegalArgumentException` — `result/Score`, `evidence/DefaultFieldEvidence`,
+  `field/SimilarityBands`, `scoring/ScoringResult`, `comparison/TokenSimilarity`.
+  A repository builder is not the resolver builder, and
+  `docs/conventions.md#errors` scopes the configuration exception to what
+  `build()` can check on a resolver.
+
+The privacy half of the criterion is unchanged and still holds: the message
+names the constraint, never a member value.
 
 ## Out of scope
 - Any comparator or pipeline wiring — task 13.
