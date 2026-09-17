@@ -190,14 +190,48 @@ gate failed the build and doclint was never reached. Task 32's answer was that
 there was nothing to do. None of the three would have surfaced from a green
 build.
 
+## Milestone 7 — complete
+
+A README, CI, and the metadata Maven Central requires. 630 tests (550 core +
+81 profiles), `BUILD SUCCESS`.
+
+- [x] **34 — CI.** `mvn clean verify` on push and pull request, reading the
+  toolchain JDK from the POM rather than restating it. Proved to fail on a real
+  break before being trusted.
+- [x] **33 — README as a developer guide.** Exact → fuzzy → tiers and rules →
+  reading the result → aliases and subsumption → Fellegi-Sunter. Every Java
+  example is compiled and run by a test, neutral ones in core and
+  domain-shaped ones in profiles.
+- [x] **35 — Maven Central readiness.** Module metadata, sources and javadoc
+  jars on every build, signing and publishing behind a `release` profile that
+  is off by default and carries no credentials.
+
+**The verdict.** The thesis holds for the guide and for CI: a developer can
+reach a working resolver from the front page, and a test figure is now a check
+rather than a claim. It holds *conditionally* for publishing — the mechanism
+works and stops only for want of a signing key, but task 28's gate means
+nothing may actually be published. Possible is not permitted, and the POM says
+so where someone would reach for `-Prelease`.
+
+**What compiling the examples was worth.** Writing the guide as a stranger
+would use the API found three things a green build never would: a similarity
+comparator returns `EXACT` rather than a band when values agree after
+normalization, so a config weighting only the bands scores a perfect agreement
+as zero; `SUBSUMED` lives on the comparator that mints it rather than on
+`ComparisonCategory`; and `FieldPipeline` exposes `prepare`/`compare` rather
+than accessors, so the asymmetric overload takes method references. All three
+were compile errors or failing assertions, not opinions.
+
 ## Notes for implementers
 
 - `jresolve-core` needs a JDK 17 toolchain (`~/.m2/toolchains.xml`, not part
   of the repo) — see `docs/architecture.md#building`. In Claude Code on the
   web this is provisioned automatically by
   `.claude/hooks/session-start.sh`; on a local machine it is still manual.
-- `mvn clean verify` baseline at task 25's close is 621 tests
-  (543 core + 78 profiles), `BUILD SUCCESS`.
+- `mvn clean verify` baseline at milestone 7's close is 630 tests
+  (550 core + 81 profiles), `BUILD SUCCESS`.
+- CI runs the same command on every push and pull request, so a figure in a PR
+  is a check rather than a claim.
 - Two gates now fail the build on things a reviewer used to catch by eye:
   `DomainVocabularyTest` on domain vocabulary in core, and javadoc doclint on a
   reference that no longer resolves. Both are described where the rules they
@@ -281,6 +315,28 @@ not close all five, and the two below say so rather than being ticked.
   and none of that coverage said anything about the pair. Combinations grow
   faster than anyone writes tests, and no single-line mutation probe finds a
   missing one. Unsolved, and now correctly stated.
+
+### Raised in milestone 7
+
+- **Two API sharp edges the guide had to warn about rather than the API
+  preventing.** A similarity comparator returns `EXACT` when two values are
+  equal after normalization, so a scorer configured with only band weights
+  scores a perfect agreement as zero — silently, and in the commonest case,
+  since normalization exists to produce exactly that. And a category a
+  comparator mints (`TokenSubsumptionComparator.SUBSUMED`) is not reachable
+  from `ComparisonCategory`, which is correct under D3's open value type and
+  still surprising from outside. Both are documented in the README; neither is
+  fixed, because task 33 was explicitly not allowed to change the API to make
+  the guide easier. Whether either deserves an API change is open.
+- **The release profile is possible but not permitted, and only a comment says
+  so.** `-Prelease` assembles and signs; D19's gate is prose in the POM and in
+  `PLAN.md`. Nothing mechanical stops a maintainer publishing illustrative
+  alias tables as reference data. A check that fails the release profile while
+  the tables are marked illustrative would close that, and is not written.
+- **CI does not yet run on a release path.** Task 34 runs the build; publishing
+  is manual and untested end to end. That is deliberate — a release workflow
+  touches secrets and is its own task — but it means the first real publish
+  will exercise a path nothing has rehearsed.
 
 ### Raised by task 25
 

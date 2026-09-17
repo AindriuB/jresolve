@@ -9,6 +9,36 @@
   <version>0.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
+  <name>jresolve</name>
+  <description>
+    Probabilistic entity resolution for Java 8: match a source object against
+    candidate objects on fuzzy field evidence and return a ranked, explainable
+    decision. No framework, JSON, database or logging dependency.
+  </description>
+  <url>https://github.com/AindriuB/jresolve</url>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>AindriuB</id>
+      <name>Aindriu Bannister</name>
+      <url>https://github.com/AindriuB</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/AindriuB/jresolve.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/AindriuB/jresolve.git</developerConnection>
+    <url>https://github.com/AindriuB/jresolve</url>
+  </scm>
+
   <modules>
     <module>jresolve-core</module>
     <module>jresolve-profiles-ie</module>
@@ -28,6 +58,9 @@
     <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
     <animal-sniffer-maven-plugin.version>1.23</animal-sniffer-maven-plugin.version>
     <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
+    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+    <maven-gpg-plugin.version>3.2.4</maven-gpg-plugin.version>
+    <central-publishing-maven-plugin.version>0.5.0</central-publishing-maven-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -143,6 +176,24 @@
         <artifactId>animal-sniffer-maven-plugin</artifactId>
       </plugin>
       <!--
+        Central rejects a bundle without a sources jar and a javadoc jar. Both
+        are built on every run rather than only on release, so a packaging
+        problem surfaces on an ordinary build instead of on release day.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>${maven-source-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!--
         A reference that has gone stale fails the build rather than rotting in
         a comment. Task 27 renamed two fixture types and left a neighbouring
         file's Javadoc describing types that no longer existed; nothing caught
@@ -181,6 +232,21 @@
             </configuration>
           </execution>
           <execution>
+            <!--
+              The javadoc JAR Central requires. Separate from the doclint
+              executions above: this one packages, those two gate. Breaking
+              either would be a silent loss of the stale-reference check.
+            -->
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <configuration>
+              <doclint>all,-missing</doclint>
+              <quiet>true</quiet>
+            </configuration>
+          </execution>
+          <execution>
             <id>javadoc-doclint</id>
             <phase>verify</phase>
             <goals>
@@ -210,4 +276,58 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!--
+      Signing and publishing live here and nowhere else, so an ordinary
+      `mvn clean verify` never invokes GPG, never needs a key and never slows
+      down. Activate with `-Prelease`.
+
+      No credentials are in this repository and none should be. The GPG key
+      and the Central token come from the developer's own ~/.m2/settings.xml,
+      or from CI secrets; the server id below is a reference to an entry
+      there, not a secret itself.
+
+      NOTE: this profile makes publishing POSSIBLE, not PERMITTED. D19 makes a
+      licensed alias corpus a release gate, and jresolve-profiles-ie still
+      ships hand-written illustrative tables. Nothing publishes until that is
+      replaced; see task 28 in docs/plan/PLAN.md.
+    -->
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>${maven-gpg-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>${central-publishing-maven-plugin.version}</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <!--
+                Deliberately not automatic. A release is reviewed in the
+                Central portal and released by hand, because the gate above is
+                a judgement no plugin can make.
+              -->
+              <autoPublish>false</autoPublish>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

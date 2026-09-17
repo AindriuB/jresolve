@@ -3,6 +3,74 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-17 — Milestone 7: a README that cannot rot, CI, and a release profile that is possible but not permitted (tasks 33, 34, 35)
+
+The library was good and unreachable: no README, no CI, and POMs carrying none
+of the metadata Maven Central requires. 630 tests (550 core + 81 profiles),
+`BUILD SUCCESS`.
+
+**34 — CI, implemented first on purpose** so the other two landed under a check
+rather than on a claim. `mvn clean verify` on push and pull request, reaching
+`verify` rather than `test` because two gates live there that `mvn test` skips:
+animal-sniffer's java18 check, which is what actually enforces the Java 8
+target, and task 31's doclint gate. A job running `mvn test` would report green
+while the thing this project pins hardest went unchecked. The toolchain JDK
+version is read from the POM by the same `sed` the session-start hook uses, so
+the workflow and the build cannot drift. Proved to fail before being trusted:
+renaming `LevenshteinSimilarity.similarity` turns the exact CI command red.
+
+**33 — the README, with every Java example compiled and run by a test.** Neutral
+examples in core, domain-shaped in profiles, because the vocabulary rule binds
+core's tests too.
+
+**Writing it as a stranger would use the API found three things a green build
+never would, which is the whole argument for compiling examples.** A similarity
+comparator returns `EXACT`, not a band, when two values are equal *after*
+normalization — so a scorer weighting only `VERY_HIGH` and `HIGH` scores a
+perfect agreement as **zero**, silently, in the commonest case, since
+normalization exists to produce exactly that agreement. My first fuzzy example
+did it and failed. It is now the loudest callout in the guide.
+`TokenSubsumptionComparator.SUBSUMED` is not reachable from
+`ComparisonCategory` — correct under D3's open value type, invisible from
+outside, and it cost a compile error. And `FieldPipeline` exposes
+`prepare`/`compare` rather than accessors, so the asymmetric overload takes
+method references rather than the getters I assumed.
+
+Task 30's vocabulary gate also fired on new work for the first time rather than
+on a plant, failing the build over the word "Surname" in a comment I had
+written in a core test.
+
+**35 — Central readiness.** Module metadata, the Apache 2.0 licence, developer
+and SCM blocks; sources and javadoc jars on every build rather than only on
+release, so a packaging problem surfaces on an ordinary run. Signing and
+publishing sit in a `release` profile that is off by default, invokes GPG never
+on a normal build, and carries no credentials — the key and token come from
+`settings.xml` or CI secrets.
+
+**Shown to assemble rather than hoped to.** `mvn -Prelease clean verify` runs
+the sources jar, the javadoc jar, animal-sniffer and both doclint gates, and
+stops exactly where it must: `gpg:sign`, with no key present. Adding the
+javadoc *jar* execution could have silently replaced the two doclint *gate*
+executions, so that was re-checked: a planted stale `{@link}` still fails the
+build naming `Score.java:4`.
+
+**The verdict.** The thesis holds for the guide and for CI. It holds
+*conditionally* for publishing: the mechanism works and stops only for want of
+a key, but D19's gate means nothing may actually be published while
+`jresolve-profiles-ie` ships illustrative tables. Possible is not permitted,
+and the POM says so where a maintainer would reach for `-Prelease` — which is
+the right place, because someone activating that profile is reading the POM,
+not `PLAN.md`.
+
+**An XML comment cannot contain a double dash**, and that broke the build twice
+this session — once in task 31 and again here. Recorded because rediscovering
+it a third time would be worse than writing it down.
+
+**Where the project stands.** Seven milestones, 630 tests, a front page, a
+green check, and a release path that assembles. The planning file still holds
+exactly one unchecked item: task 28's licensed alias corpus, which is a
+sourcing decision and not a coding one.
+
 ## 2026-09-17 — Explainable rejection closes milestone 5, and the plan empties but for a gate no code closes (task 25)
 
 `MatchResult.getRejectedCandidates()` carries each vetoed candidate with the
