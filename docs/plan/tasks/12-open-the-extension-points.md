@@ -11,6 +11,8 @@
 - jresolve-core/src/test/java/io/github/aindriub/jresolve/field/ExactFieldComparatorTest.java
 - jresolve-core/src/test/java/io/github/aindriub/jresolve/result/ScoreTest.java
 - jresolve-core/src/test/java/io/github/aindriub/jresolve/field/FieldComparatorNullSafetyTest.java
+- jresolve-core/src/main/java/io/github/aindriub/jresolve/field/SimilarityFieldComparator.java *(amendment, see below)*
+- jresolve-core/src/test/java/io/github/aindriub/jresolve/extension/** *(amendment, see below)*
 
 ## Goal
 Task 15 writes a comparator in `jresolve-profiles-ie`. Two things in `field/`
@@ -45,6 +47,25 @@ on a field layer that can actually be extended.
 - [ ] `FieldComparatorNullSafetyTest`'s comment that describes its own failure mode backwards is corrected (PLAN.md, wave 3).
 - [ ] `mvn verify` passes with no change to any assertion outside this task's `Owns`. Widening visibility must not require editing a sibling test.
 - [ ] No type, member or Javadoc word in these files names a person, name, address, date of birth or country.
+
+## Planning amendment (at implementation)
+
+Two files were added to `Owns` after the plan was written, both forced by the
+acceptance criteria as stated rather than by new scope:
+
+- `field/SimilarityFieldComparator.java:37` overrides `compareNonNull` with
+  package-private visibility. Making the abstract method `protected` — which
+  acceptance requires, so a subclass outside `field/` can implement it — would
+  make that override *reduce* visibility, which Java forbids. The override must
+  widen to `protected` in the same change or the module does not compile. The
+  edit is visibility-only; no behaviour in that file changes.
+- The "test in a different package" criterion needs a file outside `field/`,
+  and the original `Owns` listed no such path. It lands in a new
+  `io.github.aindriub.jresolve.extension` test package, which no other task
+  owns.
+
+Neither addition clashes with tasks 13-16: 13 and 14 create new files only, and
+15 and 16 are in the profiles module.
 
 ## Note on scope
 This task deliberately changes public API surface (two members widened, one

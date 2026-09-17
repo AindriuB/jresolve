@@ -71,9 +71,21 @@ class FieldComparatorNullSafetyTest {
 
     @Test
     void comparatorListCoversEveryConcreteComparatorInThisPackage() {
-        // A manual list, not reflection: reflection would silently stop
-        // covering a new comparator added later, exactly the failure mode
-        // this test exists to catch.
+        // The list is manual because these comparators do not share a
+        // constructor signature, so reflection could not instantiate them
+        // generically.
+        //
+        // Be clear about what that costs, because the previous comment here
+        // had it backwards. Reflection would pick up a new comparator on its
+        // own; a manual list is precisely the thing that can silently stop
+        // covering one. This assertion does not read the package — it is a
+        // tripwire on the list, and it fails only once someone edits the
+        // list, prompting them to confirm the null contract holds for what
+        // they added. A comparator added to this package and never added
+        // here is covered by nothing, and nothing here will say so.
+        //
+        // So: whoever adds a comparator to this package adds it above and
+        // updates this count.
         assertThat(comparators()).hasSize(2);
     }
 }

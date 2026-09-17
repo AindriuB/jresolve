@@ -73,9 +73,20 @@ public final class SimilarityBands {
 
     /**
      * Bands a raw similarity score into a category. Bounds are inclusive at
-     * the lower edge of each band.
+     * the lower edge of each band: a score of exactly {@code veryHigh} is
+     * {@code VERY_HIGH}, not {@code HIGH}.
+     *
+     * <p>This method is public so that a comparator written outside this
+     * package can apply the configured thresholds rather than reimplement
+     * the banding. A second implementation is the defect this visibility
+     * exists to prevent — it would compile, pass its own tests, and band a
+     * boundary score differently from every comparator in this package if it
+     * used exclusive bounds.
+     *
+     * @param similarity a raw score, expected within {@code [0, 1]}
+     * @return the band this score falls in, never {@code null}
      */
-    ComparisonCategory categoryFor(double similarity) {
+    public ComparisonCategory categoryFor(double similarity) {
         if (similarity >= veryHigh) {
             return ComparisonCategory.VERY_HIGH;
         }

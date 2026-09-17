@@ -1,5 +1,6 @@
 package io.github.aindriub.jresolve.result;
 
+import io.github.aindriub.jresolve.scoring.RuleBasedScorer;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,6 +29,29 @@ class ScoreTest {
     void rejectsNullScale() {
         assertThatThrownBy(() -> new Score(1.0, null, "algorithm", null))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsNullAlgorithm() {
+        assertThatThrownBy(() -> new Score(1.0, ScoreScale.POINTS, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("algorithm");
+    }
+
+    @Test
+    void theRejectionMessageNamesTheConstraintAndNotAValue() {
+        assertThatThrownBy(() -> new Score(99.5, ScoreScale.POINTS, null, null))
+                .hasMessageNotContaining("99.5");
+    }
+
+    @Test
+    void theScorerSuppliedAlgorithmIsStillAccepted() {
+        // The guard must reject only the unattributed case. RuleBasedScorer
+        // stamps a constant on every score it produces, and that path is the
+        // one this constructor is actually on in the shipped pipeline.
+        Score score = new Score(10.0, ScoreScale.POINTS, RuleBasedScorer.ALGORITHM, null);
+
+        assertThat(score.getAlgorithm()).isEqualTo(RuleBasedScorer.ALGORITHM);
     }
 
     @Test
