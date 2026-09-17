@@ -7,6 +7,7 @@ import io.github.aindriub.jresolve.evidence.MatchEvidence;
 import io.github.aindriub.jresolve.result.FieldContribution;
 import io.github.aindriub.jresolve.result.Score;
 import io.github.aindriub.jresolve.result.ScoreScale;
+import io.github.aindriub.jresolve.evidence.TokenSubsumption;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -186,5 +187,36 @@ class RuleBasedScorerTest {
         Map<String, FieldEvidence> fields = new LinkedHashMap<>();
         fields.put(field, new DefaultFieldEvidence(category, null, null));
         return new MatchEvidence(fields, true);
+    }
+
+    @Test
+    void aContributionCarriesTheSubsumptionFromItsEvidence() {
+        Map<String, FieldEvidence> fields = new LinkedHashMap<>();
+        fields.put("locality", new DefaultFieldEvidence(
+                ComparisonCategory.EXACT, null, null, TokenSubsumption.LEFT_SUBSUMES_RIGHT));
+        RuleBasedScorer scorer = RuleBasedScorer.builder()
+                .weight("locality", ComparisonCategory.EXACT, 1.0)
+                .build();
+
+        ScoringResult result = scorer.score(new MatchEvidence(fields, true));
+
+        assertThat(result.getContributions())
+                .extracting(FieldContribution::getSubsumption)
+                .containsExactly(TokenSubsumption.LEFT_SUBSUMES_RIGHT);
+    }
+
+    @Test
+    void evidenceFromAComparatorThatIgnoresTokensReportsNotApplicable() {
+        Map<String, FieldEvidence> fields = new LinkedHashMap<>();
+        fields.put("code", new DefaultFieldEvidence(ComparisonCategory.EXACT, null, null));
+        RuleBasedScorer scorer = RuleBasedScorer.builder()
+                .weight("code", ComparisonCategory.EXACT, 1.0)
+                .build();
+
+        ScoringResult result = scorer.score(new MatchEvidence(fields, true));
+
+        assertThat(result.getContributions())
+                .extracting(FieldContribution::getSubsumption)
+                .containsExactly(TokenSubsumption.NOT_APPLICABLE);
     }
 }
