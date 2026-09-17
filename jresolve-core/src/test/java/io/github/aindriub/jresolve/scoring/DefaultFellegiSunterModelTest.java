@@ -5,7 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.aindriub.jresolve.evidence.ComparisonCategory;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -323,5 +326,109 @@ class DefaultFellegiSunterModelTest {
                 .build();
 
         assertThat(model.uProbability("code", ComparisonCategory.EXACT, "alpha")).isEqualTo(0.9);
+    }
+
+    // ------------------------------------------------------ composite rules
+
+    @Test
+    void aGroupDeclaredWithoutARuleCombinesBySmallest() {
+        DefaultFellegiSunterModel model = DefaultFellegiSunterModel.builder()
+                .probabilities("code", ComparisonCategory.EXACT, 0.8, 0.1)
+                .probabilities("tier", ComparisonCategory.EXACT, 0.5, 0.25)
+                .composite(Arrays.asList("code", "tier"))
+                .build();
+
+        assertThat(model.compositeRuleFor(model.compositeGroups().iterator().next()))
+                .isSameAs(CompositeRule.SMALLEST);
+    }
+
+    @Test
+    void eachGroupKeepsTheRuleItWasDeclaredWith() {
+        DefaultFellegiSunterModel model = DefaultFellegiSunterModel.builder()
+                .probabilities("code", ComparisonCategory.EXACT, 0.8, 0.1)
+                .probabilities("tier", ComparisonCategory.EXACT, 0.5, 0.25)
+                .probabilities("alpha", ComparisonCategory.EXACT, 0.8, 0.2)
+                .probabilities("bravo", ComparisonCategory.EXACT, 0.8, 0.05)
+                .composite(Arrays.asList("code", "tier"), CompositeRule.STRONGEST)
+                .composite(Arrays.asList("alpha", "bravo"), CompositeRule.AVERAGE)
+                .build();
+
+        assertThat(model.compositeRuleFor(new LinkedHashSet<>(Arrays.asList("code", "tier"))))
+                .isSameAs(CompositeRule.STRONGEST);
+        assertThat(model.compositeRuleFor(new LinkedHashSet<>(Arrays.asList("alpha", "bravo"))))
+                .isSameAs(CompositeRule.AVERAGE);
+    }
+
+    @Test
+    void anUndeclaredGroupReportsTheConservativeDefault() {
+        DefaultFellegiSunterModel model = DefaultFellegiSunterModel.builder()
+                .probabilities("code", ComparisonCategory.EXACT, 0.8, 0.1)
+                .build();
+
+        assertThat(model.compositeRuleFor(new LinkedHashSet<>(Arrays.asList("code", "tier"))))
+                .isSameAs(CompositeRule.SMALLEST);
+    }
+
+    @Test
+    void rejectsANullCompositeRule() {
+        assertThatThrownBy(() -> DefaultFellegiSunterModel.builder()
+                .probabilities("code", ComparisonCategory.EXACT, 0.8, 0.1)
+                .probabilities("tier", ComparisonCategory.EXACT, 0.5, 0.25)
+                .composite(Arrays.asList("code", "tier"), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("rule");
+    }
+
+    @Test
+    void theRuleRejectionNamesTheConstraintAndNotTheFields() {
+        // D10: a field value must not reach a message. The field names here
+        // are the consumer's own, so the message names neither.
+        assertThatThrownBy(() -> DefaultFellegiSunterModel.builder()
+                .probabilities("supersecretfield", ComparisonCategory.EXACT, 0.8, 0.1)
+                .probabilities("tier", ComparisonCategory.EXACT, 0.5, 0.25)
+                .composite(Arrays.asList("supersecretfield", "tier"), null))
+                .hasMessageNotContaining("supersecretfield");
+    }
+
+    @Test
+    void anImplementationThatDoesNotOverrideTheRuleDeclaresSmallest() {
+        // The default method is what keeps this interface change additive: a
+        // model written before the rule existed still compiles and still
+        // behaves as it did.
+        FellegiSunterModel bare = new FellegiSunterModel() {
+            @Override
+            public double mProbability(String field, ComparisonCategory category) {
+                return 0.8;
+            }
+
+            @Override
+            public double uProbability(String field, ComparisonCategory category, String key) {
+                return 0.1;
+            }
+
+            @Override
+            public boolean isIgnored(String field, ComparisonCategory category) {
+                return false;
+            }
+
+            @Override
+            public boolean hasPriorOdds() {
+                return false;
+            }
+
+            @Override
+            public double priorOdds() {
+                throw new IllegalStateException("no prior odds configured");
+            }
+
+            @Override
+            public Collection<Set<String>> compositeGroups() {
+                return Collections.<Set<String>>singletonList(
+                        new LinkedHashSet<>(Arrays.asList("code", "tier")));
+            }
+        };
+
+        assertThat(bare.compositeRuleFor(new LinkedHashSet<>(Arrays.asList("code", "tier"))))
+                .isSameAs(CompositeRule.SMALLEST);
     }
 }

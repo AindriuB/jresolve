@@ -113,7 +113,8 @@ public final class FellegiSunterScorer implements MatchScorer {
             weightByField.put(field, Math.log(m / u) / LN_2);
         }
 
-        Set<String> suppressed = suppressedByComposites(weightByField);
+        Map<String, Double> compositeOverride = new HashMap<>();
+        Set<String> suppressed = applyComposites(weightByField, compositeOverride);
 
         double total = 0.0;
         List<FieldContribution> contributions = new ArrayList<>();
@@ -132,6 +133,18 @@ public final class FellegiSunterScorer implements MatchScorer {
             if (suppressed.contains(field)) {
                 contributions.add(new FieldContribution(field, fieldEvidence.getCategory(), 0.0,
                         "scoring.fellegiSunter.compositeSuppressed." + field,
+                        fieldEvidence.getSubsumption()));
+                continue;
+            }
+            Double override = compositeOverride.get(field);
+            if (override != null) {
+                // The group's weight is carried here but is not this field's
+                // own, so the key says so. Reporting it under the ordinary
+                // contribution key would claim this field measured something
+                // it did not.
+                total += override;
+                contributions.add(new FieldContribution(field, fieldEvidence.getCategory(),
+                        override, "scoring.fellegiSunter.compositeCombined." + field,
                         fieldEvidence.getSubsumption()));
                 continue;
             }
@@ -155,33 +168,57 @@ public final class FellegiSunterScorer implements MatchScorer {
     }
 
     /**
-     * For each declared composite group, keeps the member with the smallest
-     * weight and suppresses the rest, so the group contributes once.
+     * Reduces each declared composite group to a single contribution, by the
+     * rule that group was declared with.
+     *
+     * <p>One member carries the group's weight and the rest are suppressed.
+     * For {@link CompositeRule#SMALLEST} and {@link CompositeRule#STRONGEST}
+     * the carrier's own weight is the group's, so nothing is overridden. For
+     * {@link CompositeRule#AVERAGE} the group's weight is not any member's, so
+     * the carrier's entry is recorded in {@code overrideOut} and reported
+     * under a key saying the value is the group's rather than the field's.
      *
      * <p>A group whose members are not all present contributes through
-     * whichever members are: a composite is a statement about correlation,
-     * not a requirement that every member be compared.
+     * whichever members are: a composite is a statement about correlation, not
+     * a requirement that every member be compared.
+     *
+     * @param overrideOut filled with the carrier's group weight where that
+     *     weight is not the carrier's own
+     * @return the fields suppressed because a group already contributed
      */
-    private Set<String> suppressedByComposites(Map<String, Double> weightByField) {
+    private Set<String> applyComposites(
+            Map<String, Double> weightByField, Map<String, Double> overrideOut) {
         Set<String> suppressed = new HashSet<>();
         for (Set<String> group : model.compositeGroups()) {
-            String keep = null;
-            double keepWeight = 0.0;
+            CompositeRule rule = model.compositeRuleFor(group);
+            List<String> present = new ArrayList<>();
             for (String field : group) {
-                Double weight = weightByField.get(field);
-                if (weight == null || suppressed.contains(field)) {
-                    continue;
-                }
-                if (keep == null || weight < keepWeight) {
-                    keep = field;
-                    keepWeight = weight;
+                if (weightByField.containsKey(field) && !suppressed.contains(field)) {
+                    present.add(field);
                 }
             }
-            if (keep == null) {
+            if (present.isEmpty()) {
                 continue;
             }
-            for (String field : group) {
-                if (!field.equals(keep) && weightByField.containsKey(field)) {
+            String carrier = present.get(0);
+            double total = 0.0;
+            for (String field : present) {
+                double weight = weightByField.get(field);
+                total += weight;
+                boolean better = rule == CompositeRule.STRONGEST
+                        ? weight > weightByField.get(carrier)
+                        : weight < weightByField.get(carrier);
+                if (rule != CompositeRule.AVERAGE && better) {
+                    carrier = field;
+                }
+            }
+            if (rule == CompositeRule.AVERAGE) {
+                // Declaration order decides the carrier, so the same model
+                // reports the same field twice running.
+                overrideOut.put(carrier, total / present.size());
+            }
+            for (String field : present) {
+                if (!field.equals(carrier)) {
                     suppressed.add(field);
                 }
             }

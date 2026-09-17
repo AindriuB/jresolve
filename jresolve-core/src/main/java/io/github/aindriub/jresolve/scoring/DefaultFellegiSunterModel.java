@@ -31,6 +31,7 @@ public final class DefaultFellegiSunterModel implements FellegiSunterModel {
     private final TermFrequencyTable frequencies;
     private final Double priorOdds;
     private final Collection<Set<String>> compositeGroups;
+    private final Map<Set<String>, CompositeRule> compositeRules;
 
     private DefaultFellegiSunterModel(Builder builder) {
         this.mByPair = Collections.unmodifiableMap(new HashMap<>(builder.mByPair));
@@ -43,6 +44,11 @@ public final class DefaultFellegiSunterModel implements FellegiSunterModel {
             groups.add(Collections.unmodifiableSet(new LinkedHashSet<>(group)));
         }
         this.compositeGroups = Collections.unmodifiableList(groups);
+        Map<Set<String>, CompositeRule> rules = new HashMap<>();
+        for (int i = 0; i < groups.size(); i++) {
+            rules.put(groups.get(i), builder.compositeRules.get(i));
+        }
+        this.compositeRules = Collections.unmodifiableMap(rules);
     }
 
     public static Builder builder() {
@@ -113,6 +119,15 @@ public final class DefaultFellegiSunterModel implements FellegiSunterModel {
         return compositeGroups;
     }
 
+    @Override
+    public CompositeRule compositeRuleFor(Set<String> group) {
+        CompositeRule rule = compositeRules.get(group);
+        // A group this model never declared has no rule of its own, and the
+        // conservative default is the honest answer rather than a throw: the
+        // caller asked what a group combines by, not whether it exists.
+        return rule == null ? CompositeRule.SMALLEST : rule;
+    }
+
     private static String requireField(String field) {
         if (field == null) {
             throw new IllegalArgumentException("field must not be null");
@@ -135,6 +150,7 @@ public final class DefaultFellegiSunterModel implements FellegiSunterModel {
         private final Set<String> ignoredPairs = new HashSet<>();
         private final Set<String> configuredFields = new HashSet<>();
         private final List<Set<String>> compositeGroups = new ArrayList<>();
+        private final List<CompositeRule> compositeRules = new ArrayList<>();
         private TermFrequencyTable frequencies;
         private Double priorOdds;
 
@@ -222,8 +238,28 @@ public final class DefaultFellegiSunterModel implements FellegiSunterModel {
          *     or a null member
          */
         public Builder composite(Collection<String> fields) {
+            return composite(fields, CompositeRule.SMALLEST);
+        }
+
+        /**
+         * Declares two or more fields to be one comparison, combining by the
+         * given rule.
+         *
+         * <p>The rule is declared per group rather than per model because
+         * correlation strength is a property of the fields in a group, not of
+         * the model holding them: a model whose one group is tightly coupled
+         * and whose other is barely coupled cannot express both with a single
+         * setting.
+         *
+         * @throws IllegalArgumentException if fewer than two distinct members,
+         *     a null member, or a null rule
+         */
+        public Builder composite(Collection<String> fields, CompositeRule rule) {
             if (fields == null) {
                 throw new IllegalArgumentException("fields must not be null");
+            }
+            if (rule == null) {
+                throw new IllegalArgumentException("rule must not be null");
             }
             Set<String> group = new LinkedHashSet<>();
             for (String field : fields) {
@@ -234,6 +270,7 @@ public final class DefaultFellegiSunterModel implements FellegiSunterModel {
                         "a composite must name at least two distinct fields, named " + group.size());
             }
             compositeGroups.add(group);
+            compositeRules.add(rule);
             return this;
         }
 
