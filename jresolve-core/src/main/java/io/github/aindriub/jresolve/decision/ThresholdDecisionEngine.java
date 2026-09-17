@@ -43,6 +43,15 @@ public final class ThresholdDecisionEngine<C> implements MatchDecisionEngine<C> 
         this.thresholds = thresholds;
     }
 
+    /**
+     * The thresholds passed to the constructor — the ones every decision
+     * below is actually made against.
+     */
+    @Override
+    public DecisionThresholds declaredThresholds() {
+        return thresholds;
+    }
+
     @Override
     public MatchResult<C> decide(List<ScoredCandidate<C>> candidates) {
         if (candidates == null) {

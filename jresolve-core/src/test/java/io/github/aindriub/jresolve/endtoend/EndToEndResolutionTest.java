@@ -1,6 +1,7 @@
 package io.github.aindriub.jresolve.endtoend;
 
 import io.github.aindriub.jresolve.api.CandidateRule;
+import io.github.aindriub.jresolve.api.EntityResolutionConfigurationException;
 import io.github.aindriub.jresolve.api.EntityResolver;
 import io.github.aindriub.jresolve.api.EntityResolverBuilder;
 import io.github.aindriub.jresolve.api.RuleDecision;
@@ -44,6 +45,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The milestone gate: assembles a whole resolver from a consumer's seat —
@@ -196,14 +198,18 @@ class EndToEndResolutionTest {
     /**
      * Builds the resolver from {@code partial}, wiring {@link #scorer()} and
      * one {@link DecisionThresholds} instance into both {@code
-     * .thresholds(...)} and the {@link ThresholdDecisionEngine} — the
-     * same-instance contract {@link EntityResolverBuilder#thresholds}
-     * documents but cannot enforce (task 07, D6 "Known gaps"). Using two
-     * separately constructed instances here would build cleanly and then
-     * silently decide against whichever thresholds the engine actually
-     * holds; {@link #followingTheSameInstanceThresholdsContractProducesTheDeclaredDecision()}
-     * and {@link #twoDifferentThresholdsInstancesSilentlyDecideAgainstTheEnginesOwnInstance()}
-     * test that directly.
+     * .thresholds(...)} and the {@link ThresholdDecisionEngine}.
+     *
+     * <p>That agreement is now enforced rather than merely contracted:
+     * {@link EntityResolverBuilder#thresholds} checks the thresholds the
+     * engine declares against both the scorer's scale and the value passed
+     * to it, so a divergent configuration no longer builds (D6, closed by
+     * task 17). Passing one instance to both is still the clearest way to
+     * write it, but two equal instances would build just as well — the check
+     * is by value. {@link #twoDifferentThresholdsInstancesAreRejectedAtBuild()},
+     * {@link #anEngineOnTheWrongScaleIsRejectedAtBuild()} and
+     * {@link #separatelyConstructedButEqualThresholdsStillBuild()} cover the
+     * three cases directly.
      */
     private static EntityResolver<ExternalPerson, Owner> resolverWith(EntityResolverBuilder<ExternalPerson, Owner> partial) {
         DecisionThresholds sharedThresholds = thresholds();
@@ -597,50 +603,80 @@ class EndToEndResolutionTest {
     }
 
     /**
-     * The documented gap itself: {@code EntityResolverBuilder.build()} only
-     * checks the {@link ScoreScale} of the {@code DecisionThresholds}
-     * instance passed to {@code .thresholds(...)}; it cannot see, and does
-     * not check, whether that instance is the same one backing the {@link
-     * ThresholdDecisionEngine} passed to {@code .decisionEngine(...)}. Two
-     * different instances with different values both pass {@code build()}
-     * and {@code resolve()} silently applies whichever one the engine
-     * actually holds, not the one named in {@code .thresholds(...)}.
+     * D6, now closed. {@code EntityResolverBuilder.build()} inspects the
+     * thresholds the configured {@link ThresholdDecisionEngine} actually
+     * applies, via {@link
+     * io.github.aindriub.jresolve.decision.MatchDecisionEngine#declaredThresholds()},
+     * and rejects a configuration where those differ from the ones passed to
+     * {@code .thresholds(...)}.
      *
-     * <p><strong>Do not delete or "fix" this test.</strong> It is a
-     * deliberate characterization test of task 07's known D6 hole, not an
-     * assertion that this behavior is desirable — it documents what the
-     * library does today so the gap cannot quietly widen unnoticed. When a
-     * later milestone makes {@link io.github.aindriub.jresolve.decision.MatchDecisionEngine}
-     * expose the {@link DecisionThresholds} or {@link ScoreScale} it actually
-     * holds, {@code build()} will be able to check the two instances agree
-     * and this test's assertion of {@code MATCH} should then fail (because
-     * {@code build()} would reject the mismatched instances before
-     * {@code resolve()} ever runs) — that failure is the signal the D6 gap
-     * has closed, and this test should be updated at that point, not before.
+     * <p>This test used to be a characterization test asserting the bug: two
+     * different instances both passed {@code build()}, and {@code resolve()}
+     * silently applied whichever the engine held. Its own Javadoc said that
+     * when a later milestone let the engine expose its thresholds, "this
+     * test's assertion of {@code MATCH} should then fail ... that failure is
+     * the signal the D6 gap has closed, and this test should be updated at
+     * that point, not before." That is what happened, and this is that
+     * update — the same configuration, asserted to be rejected rather than
+     * tolerated.
      */
     @Test
-    void twoDifferentThresholdsInstancesSilentlyDecideAgainstTheEnginesOwnInstance() {
+    void twoDifferentThresholdsInstancesAreRejectedAtBuild() {
         // Declared to build() — a threshold no real score could ever reach.
         DecisionThresholds declaredButUnused = new DecisionThresholds(200.0, 20.0, 10.0, ScoreScale.POINTS);
         // What the engine is actually constructed with.
         DecisionThresholds actuallyApplied = new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS);
 
-        EntityResolver<ExternalPerson, Owner> resolver = builder()
+        // Both are POINTS, so a scale-only check would have passed this
+        // configuration: the divergence is in the values, not the scale.
+        // That is why the engine declares its thresholds rather than only
+        // their scale.
+        assertThatThrownBy(() -> builder()
                 .scorer(scorer())
                 .thresholds(declaredButUnused)
                 .decisionEngine(new ThresholdDecisionEngine<>(actuallyApplied))
+                .build())
+                .isInstanceOf(EntityResolutionConfigurationException.class)
+                .hasMessageContaining("different");
+    }
+
+    /**
+     * The same rejection for the case D6's note reproduced concretely: an
+     * engine holding PROBABILITY thresholds while the scorer produces POINTS,
+     * which would have compared a 10.0-point score against 0.9.
+     */
+    @Test
+    void anEngineOnTheWrongScaleIsRejectedAtBuild() {
+        DecisionThresholds points = new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS);
+        DecisionThresholds probability = new DecisionThresholds(0.9, 0.5, 0.2, ScoreScale.PROBABILITY);
+
+        assertThatThrownBy(() -> builder()
+                .scorer(scorer())
+                .thresholds(points)
+                .decisionEngine(new ThresholdDecisionEngine<>(probability))
+                .build())
+                .isInstanceOf(EntityResolutionConfigurationException.class)
+                .hasMessageContaining("scale");
+    }
+
+    /**
+     * Equal-but-separately-constructed instances describe the same decision
+     * rule and must keep building — the check is by value, not identity, so
+     * that a caller who rebuilds an identical configuration is not punished
+     * for it.
+     */
+    @Test
+    void separatelyConstructedButEqualThresholdsStillBuild() {
+        EntityResolver<ExternalPerson, Owner> resolver = builder()
+                .scorer(scorer())
+                .thresholds(new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS))
+                .decisionEngine(new ThresholdDecisionEngine<>(
+                        new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS)))
                 .build();
 
-        ExternalPerson source = positiveSource();
-        Owner candidate = new Owner("owner-9", "John", "O'Sullivan", LocalDate.of(1985, 6, 14), "12 Main St. Dublin 4");
-
-        // total = 65 (same arithmetic as the positive scenario): below
-        // declaredButUnused's matchThreshold (200) but above
-        // actuallyApplied's (50). build() did not fail despite the two
-        // instances disagreeing, and the decision below follows
-        // actuallyApplied, proving the instance passed to .thresholds(...)
-        // was never consulted at resolve() time.
-        MatchResult<Owner> result = resolver.resolve(source, Arrays.asList(candidate));
+        MatchResult<Owner> result = resolver.resolve(positiveSource(), Arrays.asList(
+                new Owner("owner-9", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+                        "12 Main St. Dublin 4")));
 
         assertThat(result.getDecision()).isEqualTo(Decision.MATCH);
     }

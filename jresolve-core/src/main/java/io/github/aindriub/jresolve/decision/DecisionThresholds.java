@@ -66,6 +66,38 @@ public final class DecisionThresholds {
         return scale;
     }
 
+    /**
+     * Value equality over all four fields.
+     *
+     * <p>Two separately constructed but identical instances describe the same
+     * decision rule, and nothing should treat that as a misconfiguration —
+     * which is why {@code build()} compares thresholds by value rather than
+     * by identity.
+     */
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof DecisionThresholds)) {
+            return false;
+        }
+        DecisionThresholds that = (DecisionThresholds) other;
+        return Double.compare(matchThreshold, that.matchThreshold) == 0
+                && Double.compare(reviewThreshold, that.reviewThreshold) == 0
+                && Double.compare(minimumMargin, that.minimumMargin) == 0
+                && scale == that.scale;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Double.valueOf(matchThreshold).hashCode();
+        result = 31 * result + Double.valueOf(reviewThreshold).hashCode();
+        result = 31 * result + Double.valueOf(minimumMargin).hashCode();
+        result = 31 * result + scale.hashCode();
+        return result;
+    }
+
     @Override
     public String toString() {
         return "DecisionThresholds{matchThreshold=" + matchThreshold + ", reviewThreshold=" + reviewThreshold

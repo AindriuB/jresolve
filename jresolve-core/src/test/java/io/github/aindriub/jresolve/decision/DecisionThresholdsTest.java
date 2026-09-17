@@ -42,4 +42,32 @@ class DecisionThresholdsTest {
 
         assertThat(thresholds.getMatchThreshold()).isEqualTo(thresholds.getReviewThreshold());
     }
+
+    @Test
+    void equalsIsByValueAcrossAllFourFields() {
+        DecisionThresholds one = new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS);
+        DecisionThresholds two = new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS);
+
+        // Two separately constructed instances describe the same decision
+        // rule. build() compares by value precisely so that rebuilding an
+        // identical configuration is not mistaken for a misconfiguration.
+        assertThat(one).isEqualTo(two).hasSameHashCodeAs(two);
+    }
+
+    @Test
+    void differingOnAnyFieldIsNotEqual() {
+        DecisionThresholds base = new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS);
+
+        assertThat(base).isNotEqualTo(new DecisionThresholds(51.0, 20.0, 10.0, ScoreScale.POINTS));
+        assertThat(base).isNotEqualTo(new DecisionThresholds(50.0, 21.0, 10.0, ScoreScale.POINTS));
+        assertThat(base).isNotEqualTo(new DecisionThresholds(50.0, 20.0, 11.0, ScoreScale.POINTS));
+        assertThat(base).isNotEqualTo(new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.LOG2_LIKELIHOOD_RATIO));
+    }
+
+    @Test
+    void isNotEqualToOtherTypesOrNull() {
+        DecisionThresholds base = new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS);
+
+        assertThat(base).isNotEqualTo(null).isNotEqualTo("50.0");
+    }
 }

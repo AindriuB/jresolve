@@ -5,6 +5,7 @@ import io.github.aindriub.jresolve.result.MatchResult;
 import io.github.aindriub.jresolve.result.Score;
 import io.github.aindriub.jresolve.result.ScoreScale;
 import io.github.aindriub.jresolve.result.ScoredCandidate;
+import io.github.aindriub.jresolve.result.FieldContribution;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -144,5 +145,31 @@ class ThresholdDecisionEngineTest {
 
     private static Object[] entry(String candidate, double value) {
         return new Object[] {candidate, value};
+    }
+
+    @Test
+    void declaresTheThresholdsItWasConstructedWith() {
+        DecisionThresholds thresholds = new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS);
+
+        assertThat(new ThresholdDecisionEngine<String>(thresholds).declaredThresholds())
+                .isSameAs(thresholds);
+    }
+
+    @Test
+    void whatItDeclaresIsWhatItApplies() {
+        // The declaration is only useful if it cannot drift from the
+        // thresholds the decision is actually made against, so assert the
+        // declared values produce the decision they describe: a score below
+        // the declared match threshold must not come back MATCH.
+        DecisionThresholds thresholds = new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS);
+        ThresholdDecisionEngine<String> engine = new ThresholdDecisionEngine<>(thresholds);
+
+        MatchResult<String> result = engine.decide(Collections.singletonList(
+                new ScoredCandidate<>("candidate",
+                        new Score(49.0, ScoreScale.POINTS, "test", null),
+                        Collections.<FieldContribution>emptyList())));
+
+        assertThat(engine.declaredThresholds().getMatchThreshold()).isEqualTo(50.0);
+        assertThat(result.getDecision()).isNotEqualTo(Decision.MATCH);
     }
 }

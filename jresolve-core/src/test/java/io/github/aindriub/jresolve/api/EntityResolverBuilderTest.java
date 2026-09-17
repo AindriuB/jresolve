@@ -1,6 +1,7 @@
 package io.github.aindriub.jresolve.api;
 
 import io.github.aindriub.jresolve.decision.DecisionThresholds;
+import io.github.aindriub.jresolve.decision.MatchDecisionEngine;
 import io.github.aindriub.jresolve.decision.ThresholdDecisionEngine;
 import io.github.aindriub.jresolve.evidence.ComparisonCategory;
 import io.github.aindriub.jresolve.field.DefaultFieldPipeline;
@@ -263,5 +264,93 @@ class EntityResolverBuilderTest {
             return e.getMessage();
         }
         throw new AssertionError("expected build() to throw EntityResolutionConfigurationException");
+    }
+
+    // --- D6: build() inspects the engine that actually decides -------------
+
+    @Test
+    void buildRejectsAnEngineApplyingThresholdsOnADifferentScale() {
+        // The case D6 reproduced: the engine would compare a POINTS score
+        // against a probability threshold of 0.9 and call it a match.
+        EntityResolverBuilder<Source, Candidate> builder = EntityResolverBuilder.<Source, Candidate>builder()
+                .field("value", Source::getValue, Candidate::getValue, exactStringPipeline())
+                .scorer(pointsScorer())
+                .thresholds(pointsThresholds())
+                .decisionEngine(new ThresholdDecisionEngine<Candidate>(
+                        new DecisionThresholds(0.9, 0.5, 0.2, ScoreScale.PROBABILITY)));
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(EntityResolutionConfigurationException.class)
+                .hasMessageContaining("scale");
+    }
+
+    @Test
+    void buildRejectsAnEngineApplyingDifferentThresholdsOnTheSameScale() {
+        // A scale check alone would pass this: both are POINTS. The
+        // divergence is in the values, which is why the engine declares the
+        // thresholds rather than only their scale.
+        EntityResolverBuilder<Source, Candidate> builder = EntityResolverBuilder.<Source, Candidate>builder()
+                .field("value", Source::getValue, Candidate::getValue, exactStringPipeline())
+                .scorer(pointsScorer())
+                .thresholds(new DecisionThresholds(200.0, 20.0, 10.0, ScoreScale.POINTS))
+                .decisionEngine(new ThresholdDecisionEngine<Candidate>(
+                        new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS)));
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(EntityResolutionConfigurationException.class)
+                .hasMessageContaining("different");
+    }
+
+    @Test
+    void theRejectionMessageNamesTheConstraintAndNotAValue() {
+        EntityResolverBuilder<Source, Candidate> builder = EntityResolverBuilder.<Source, Candidate>builder()
+                .field("value", Source::getValue, Candidate::getValue, exactStringPipeline())
+                .scorer(pointsScorer())
+                .thresholds(new DecisionThresholds(987.65, 20.0, 10.0, ScoreScale.POINTS))
+                .decisionEngine(new ThresholdDecisionEngine<Candidate>(
+                        new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS)));
+
+        assertThatThrownBy(builder::build).hasMessageNotContaining("987.65");
+    }
+
+    @Test
+    void buildAcceptsEqualButSeparatelyConstructedThresholds() {
+        // Two instances, same values as pointsThresholds(), so the resolve
+        // below genuinely clears the match threshold. The point of the test
+        // is that build() does not reject them for being separate objects.
+        EntityResolver<Source, Candidate> resolver = EntityResolverBuilder.<Source, Candidate>builder()
+                .field("value", Source::getValue, Candidate::getValue, exactStringPipeline())
+                .scorer(pointsScorer())
+                .thresholds(new DecisionThresholds(5.0, 2.0, 1.0, ScoreScale.POINTS))
+                .decisionEngine(new ThresholdDecisionEngine<Candidate>(
+                        new DecisionThresholds(5.0, 2.0, 1.0, ScoreScale.POINTS)))
+                .build();
+
+        assertThat(resolver.resolve(new Source("a"), Arrays.asList(new Candidate("a"))).getDecision())
+                .isEqualTo(Decision.MATCH);
+    }
+
+    @Test
+    void anEngineThatDeclaresNothingStillBuildsAndResolves() {
+        // A custom engine need not decide by thresholds at all. The check
+        // must narrow what is buildable only where it can actually verify
+        // something — otherwise it would make a legitimate engine unusable.
+        MatchDecisionEngine<Candidate> alwaysNoMatch = new MatchDecisionEngine<Candidate>() {
+            @Override
+            public MatchResult<Candidate> decide(java.util.List<io.github.aindriub.jresolve.result.ScoredCandidate<Candidate>> candidates) {
+                return new MatchResult<Candidate>(Decision.NO_MATCH, null, null, null, candidates);
+            }
+        };
+
+        EntityResolver<Source, Candidate> resolver = EntityResolverBuilder.<Source, Candidate>builder()
+                .field("value", Source::getValue, Candidate::getValue, exactStringPipeline())
+                .scorer(pointsScorer())
+                .thresholds(pointsThresholds())
+                .decisionEngine(alwaysNoMatch)
+                .build();
+
+        assertThat(alwaysNoMatch.declaredThresholds()).isNull();
+        assertThat(resolver.resolve(new Source("a"), Arrays.asList(new Candidate("a"))).getDecision())
+                .isEqualTo(Decision.NO_MATCH);
     }
 }
