@@ -46,7 +46,11 @@ Out of band, any time: `/recon <question>`, `/design <question>`.
 3. Never paste file contents into a summary. Cite `path:line`.
 4. Prefer `rg` over `grep`, and read ranges over whole files.
 5. Java 8 is a hard target, not a preference. `mvn verify` enforces it.
-6. No real personal data anywhere — test fixtures are synthetic.
+6. No real personal data anywhere — test fixtures are synthetic, and say so.
+   In `jresolve-core` the statement uses the wording `docs/conventions.md`
+   prescribes, because the obvious phrasing collides with rule 7's
+   companion — the domain-vocabulary rule that `DomainVocabularyTest`
+   enforces.
 7. Only `implementer` writes code. `scribe` writes the planning record —
    `PLAN.md`, `HISTORY.md`, `HISTORY-INDEX.md`, task files. A *design artefact*
    — a doc whose content is a design output and which code cites, such as

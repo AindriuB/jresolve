@@ -115,61 +115,77 @@ ordering claim still held under the defect, so a test asserting only "rare
 beats common" would have passed and shipped it — the hand-derived absolute
 value is what failed.
 
-## Milestone 5 — planned, not started
+## Milestone 5 — wave 1 complete, wave 2 open
 
-Five items. Four are code and carry task files in `docs/plan/tasks/`; the fifth
-is a release gate that no amount of code closes. None of this is new
-capability — every item is the consequence of a decision taken after milestone
-4, which is why the milestone has no thesis of its own to prove.
+Five items, none of them new capability: every one is the consequence of a
+decision taken after milestone 4. Wave 1 landed at 598 tests (520 core + 78
+profiles), `BUILD SUCCESS`.
 
-### Wave 1 — three disjoint file sets, safe in parallel
+### Wave 1 — complete
 
-- [ ] **26 — The composite combination rule becomes selectable per group.**
-  `composite(fields, rule)` takes `SMALLEST | AVERAGE | STRONGEST` on each
-  declared group, with `composite(fields)` still meaning `SMALLEST`, so existing
-  behaviour is unchanged. Per group rather than per model because correlation
-  strength is a property of the fields, not of the model holding them.
-  `docs/calibration.md` gains the paragraph saying there is no measurement
-  procedure for the choice, and that a consumer who has not measured the
-  within-group correlation should leave it alone. Owns `scoring/`.
-- [ ] **27 — Core's test fixtures lose their domain vocabulary.**
-  `docs/conventions.md` now binds `src/test` as well as `src/main`. Measured
-  rather than estimated: **112 hits across exactly four files**, all in
-  `endtoend/` — `EndToEndResolutionTest` (88), `ExternalPerson` (12), `Owner`
-  (11), `FellegiSunterResolutionTest` (1). Two of those are type names, so this
-  renames the fixture types as well as their members. `src/main` is already
-  clean under the same grep. Until this lands **the rule outruns the code** —
-  the one inconsistency in this repository that is deliberate and dated rather
-  than unnoticed. Owns core's `endtoend/`.
-- [ ] **29 — The alias strength tiers are reordered.** `ALIAS_VARIANT` >
-  `ALIAS_TRANSLATION` > `ALIAS_NICKNAME`, per D7. One line at
-  `DefaultAliasRepository:61` and seven test files behind it — including
-  `BeatTheJoinTest`, the milestone-2 thesis test, which is why this is a task
-  rather than an edit. Owns `alias/` and the alias-asserting tests in both
-  modules.
+- [x] **26 — The composite combination rule is selectable per group.**
+  `SMALLEST | AVERAGE | STRONGEST` on each declared group; `composite(fields)`
+  still means `SMALLEST`. Additive by the `default` method pattern of tasks 10
+  and 17.
+- [x] **27 — Core's test fixtures lost their domain vocabulary.** The
+  documented grep returns nothing over `jresolve-core/src`. D1's asymmetry
+  between the two fixture types was preserved deliberately.
+- [x] **29 — The alias strength tiers are reordered.** `ALIAS_VARIANT` >
+  `ALIAS_TRANSLATION` > `ALIAS_NICKNAME`, per D7. Two derived-pair expectations
+  moved; every declared edge held; `BeatTheJoinTest` green before and after.
 
-### Wave 2 — after wave 1, because it reads what wave 1 renames
+### Wave 2 — open
 
 - [ ] **25 — Explainable rejection.** `MatchResult` carries the candidates a
   `CandidateRule` vetoed and the rule that vetoed each. Today a veto returns
   null from `DefaultEntityResolver:101` and the candidate vanishes, so a
   consumer cannot tell one that scored badly from one that was never scored.
-  D4 is now explicit that dropping is correct; this closes the explanation gap
-  dropping leaves. Sequenced second because it touches `result/` and `api/` and
-  its assertions live in the `endtoend/` files task 27 is renaming.
+  D4 is explicit that dropping is correct; this closes the explanation gap
+  dropping leaves. Its task file is the only one left in `tasks/`.
 
 ### No wave — a gate, not a task
 
-- [ ] **28 — A sourced alias corpus.** Not code: it needs a licensed source for
-  the Irish/English and nickname tables. D19 makes this a release gate, so it
-  blocks publication and nothing else. Deliberately carries no task file,
-  because there is no file set to own and no acceptance a build can check.
+- [ ] **28 — A sourced alias corpus.** Not code: it needs a licensed source
+  for the Irish/English and nickname tables. D19 makes this a release gate, so
+  it blocks publication and nothing else. Deliberately carries no task file.
 
-**What this milestone does not do.** No blocking or candidate index, no
-estimator, no phonetics (D19 settled that), and no new resolution capability of
-any kind. A consumer's results do not change, with one exception: task 29 moves
-derived alias pairs between categories, so a model with different `m`/`u` per
-alias category will score some pairs differently.
+**What wave 1 was worth.** Two of the three tasks found something their own
+contract had not anticipated, and both findings are about the checks rather
+than the code — see the gaps below. The third, task 29, closed a coverage gap
+that had made a whole test class blind to the behaviour it existed to pin.
+
+## Milestone 6 — complete
+
+Three tasks (30–32) closing the five gaps milestone 5 wave 1 raised. 602 tests
+(524 core + 78 profiles), `BUILD SUCCESS`.
+
+- [x] **30 — The domain-vocabulary rule is enforced by the build.**
+  `DomainVocabularyTest` reads core's own sources and fails naming file and
+  line, on `ModuleBoundaryTest`'s model. Takes three of the five gaps together,
+  because they were one rule's problem.
+- [x] **31 — A stale cross-file reference fails the build.** doclint at
+  `verify`, `show=private`, over test sources as well as main, scoped
+  `all,-missing`.
+- [x] **32 — Core pins its own behaviour.** No tests added: the audit found
+  nothing unpinned, which is the result rather than the absence of one.
+
+**The verdict.** The thesis was that every rule this repository states about
+itself either fails the build when violated or says in its own text that it
+cannot. That now holds for the domain-vocabulary rule, which is the one that
+had been quietly violated since task 01 — it fails the build, and
+`docs/conventions.md` lists what it cannot catch. It does not hold generally,
+and the honest position is that two of the five gaps are narrower or
+differently shaped than when they were raised rather than gone.
+
+**What writing the gates was worth, separately from the gates.** Each of the
+three tasks found something by trying to prove its own work rather than by
+running it. Task 30's first checker missed every accessor, because requiring a
+word boundary means `getLastName` never matches — the same hole the hand-run
+grep had, which is part of why the rule went unenforced. Task 31's first proof
+was a false positive: the planted stale link contained "Person", so task 30's
+gate failed the build and doclint was never reached. Task 32's answer was that
+there was nothing to do. None of the three would have surfaced from a green
+build.
 
 ## Notes for implementers
 
@@ -177,8 +193,12 @@ alias category will score some pairs differently.
   of the repo) — see `docs/architecture.md#building`. In Claude Code on the
   web this is provisioned automatically by
   `.claude/hooks/session-start.sh`; on a local machine it is still manual.
-- `mvn clean verify` baseline at milestone 4's close is 582 tests
-  (504 core + 78 profiles), `BUILD SUCCESS`.
+- `mvn clean verify` baseline at milestone 6's close is 602 tests
+  (524 core + 78 profiles), `BUILD SUCCESS`.
+- Two gates now fail the build on things a reviewer used to catch by eye:
+  `DomainVocabularyTest` on domain vocabulary in core, and javadoc doclint on a
+  reference that no longer resolves. Both are described where the rules they
+  enforce are written, not here.
 
 ## Known gaps (non-blocking, no task owns these)
 
@@ -226,6 +246,63 @@ reopen the review. Closed items are not listed; see `HISTORY.md`.
   That is the honest position, not a gap to close by inventing defaults — but
   it does mean a consumer cannot get a trustworthy probability out of the box,
   and anyone planning a release should know that is by design.
+
+### Raised in milestone 5 wave 1, resolved by milestone 6
+
+Three closed, one narrowed, one corrected. Milestone 6 took all five; it did
+not close all five, and the two below say so rather than being ticked.
+
+- [closed] **The collision with rule 6, the incomplete token list, and the
+  absence of enforcement.** One rule's problem, taken together by task 30.
+  `DomainVocabularyTest` reads core's own sources and fails naming file and
+  line; `docs/conventions.md` prescribes the synthetic-data wording rather than
+  exempting the statement; the token list now catches the camelCase forms the
+  hand-run grep missed.
+
+- **Narrowed, not closed: nothing checks a claim one file makes about
+  another.** Task 31's doclint gate fails the build on a `{@link}` to something
+  that no longer exists, at `show=private` and over test sources as well as
+  main. But the defect that raised this gap named no type — it was prose
+  asserting what a neighbouring file's fixtures looked like, and doclint is
+  indifferent to prose. The mechanically checkable subset is closed; **the gap
+  itself remains open** and is the same class as milestone 1's invisible
+  character: correct code, a comment that lies.
+
+- **Corrected: the risk is combinations, not modules.** The gap said a core
+  behaviour exercised only through a profile is one core does not pin. Task 32
+  tested that directly — mutate a core behaviour, run core's tests alone — and
+  core caught all four probes, while all three `default` methods turned out to
+  be pinned already. What task 29 actually hit was narrower and harder: a
+  **combination**, a translation edge merged with a nickname edge, a pair of
+  categories no core test put together. Every individual behaviour was covered
+  and none of that coverage said anything about the pair. Combinations grow
+  faster than anyone writes tests, and no single-line mutation probe finds a
+  missing one. Unsolved, and now correctly stated.
+
+### Raised in milestone 6
+
+- **A planning measurement was wrong, and only implementation caught it.**
+  Milestone 6 was planned on a reading that core emitted zero javadoc
+  warnings; that run had no doclint configured, so it measured the lenient
+  default rather than the gate. The real figure under `doclint=all` is 100.
+  The plan was amended in the task file with its reason rather than quietly
+  corrected — but the general point stands: a measurement taken to size a task
+  should exercise the thing the task will turn on, not its neighbour.
+- **100 javadoc `missing` warnings sit unaddressed by decision, not
+  oversight.** `no @param`, `no @return`, `no comment`. Adopting doclint's
+  `missing` group would be a documentation-completeness policy this project
+  has never chosen, and task 31 deliberately did not choose it on the
+  project's behalf. Worth deciding once; the gate is configured `all,-missing`
+  until somebody does.
+- **`DomainVocabularyTest` cannot police its own file.** It holds known-bad
+  strings as fixtures, so it skips itself. Obfuscating the samples would test
+  an obfuscation rather than the rule. The hole is one file wide and named in
+  the test's own Javadoc.
+- **`getDOB` escapes the vocabulary checker.** `dob` is the one token still
+  needing a word boundary, so its capitalised camelCase form passes. Recorded
+  in `docs/conventions.md` alongside the other limits rather than fixed,
+  because every fix here trades one false negative for a false positive
+  somewhere else.
 
 ### Answered after milestone 4
 

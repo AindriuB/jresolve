@@ -3,6 +3,173 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-17 — Milestone 6: the rules check themselves, and two of the five gaps turn out to be differently shaped (tasks 30, 31, 32)
+
+Three tasks against the five gaps milestone 5 wave 1 raised. 602 tests (524
+core + 78 profiles), `BUILD SUCCESS`. Three gaps closed, one narrowed, one
+corrected — and the two that did not close say so rather than being ticked.
+
+**30 — the domain-vocabulary rule is enforced by the build.**
+`DomainVocabularyTest` reads core's own sources and fails naming file and line,
+on `ModuleBoundaryTest`'s model: it asserts what it honestly can and states in
+its Javadoc what a checker in its position cannot. Sources rather than compiled
+classes, because the rule covers Javadoc and Javadoc is not in the bytecode.
+It took three of the five gaps together because they were one rule's problem
+rather than three.
+
+The collision with rule 6 is resolved by prescribing the wording — a fixture
+writes "none describes anyone real" — rather than exempting the statement. An
+exemption is a hole the checker implements and the reader remembers; a
+sanctioned phrase costs one sentence in `docs/conventions.md` and keeps the
+check absolute. It is a convention, so it is the maintainer's to reverse.
+
+**Writing that checker found two bugs in it, both shared with the grep it
+replaced.** Requiring a word boundary silently missed every accessor: there is
+no boundary before `Last` in `getLastName`, so the pattern never matched a
+getter — which is part of why the rule went unenforced for six milestones. And
+the checker flagged itself, reporting fourteen violations in its own fixtures;
+it now skips that one file and says why, since obfuscating the samples would
+test an obfuscation rather than the rule. One real violation was left in the
+tree by task 27 and is fixed here: `EndToEndResolutionTest:403` still said
+"first name" where the field is now `label`, invisible to the documented grep
+because it only matched camelCase.
+
+**31 — a stale cross-file reference fails the build**, and three corrections
+to my own plan along the way, each found by trying to prove the gate rather
+than trusting it.
+
+The planning measurement was invalid. Milestone 6 was planned on a reading that
+core emits zero javadoc warnings, taken from a run with no doclint configured —
+so it measured the lenient default rather than the gate. The real figure under
+`doclint=all` is 100, every one of them `no @param`, `no @return` or `no
+comment`, and none a broken reference. The gate is scoped `all,-missing`:
+documentation completeness is a policy this project has never adopted, and is a
+different decision from catching staleness.
+
+The first configuration would have caught the motivating defect on neither
+count — javadoc's default scope is `protected`, so a stale link on a private
+member is never looked at, and `javadoc-no-fork` reads main sources only, while
+the defect lived in a test class. Fixed with `show=private` and a second
+`test-javadoc-no-fork` execution, each demonstrated separately because the
+executions run in POM order and the first failure hides the second.
+
+And the first proof was a false positive: the planted stale link was `{@link
+ExternalPerson}`, which contains "Person", so task 30's gate failed the build at
+surefire and doclint was never reached. Re-running with a neutral name passed,
+which is how the `show=private` hole surfaced at all. A gate proven by a failure
+that came from somewhere else is not proven.
+
+**32 — no tests added, and that is the result.** All three `default` methods on
+core interfaces were already pinned, two of them better than the task file
+asked for. So the hypothesis was tested directly by task 29's own method —
+mutate a core behaviour, run core's tests alone, see whether core catches it or
+only profiles does. Four probes, four catches.
+
+**Which corrects the gap rather than closing it.** What task 29 hit was not
+"core behaviour covered only in profiles": every individual behaviour was
+pinned. What was missing was a *combination* — a translation edge merged with
+a nickname edge, a pair of categories no core test put together — and complete
+single-behaviour coverage said nothing about the pair. That is harder than the
+gap as written, because combinations grow faster than anyone writes tests and
+no single-line probe finds a missing one.
+
+**The verdict.** The thesis was that every rule this repository states about
+itself either fails the build when violated or says in its own text that it
+cannot. It holds for the domain-vocabulary rule, which is the one that had been
+quietly violated since task 01. It does not hold generally, and two of the five
+gaps are narrower or differently shaped rather than gone. Counting five closed
+would have been the easy and wrong summary.
+
+**The pattern across all three.** Each task found its real finding by trying to
+prove its own work, not by running it: the checker that missed every accessor,
+the gate proven by the wrong failure, the audit whose answer was that there was
+nothing to do. A green build reported none of them.
+
+## 2026-09-17 — Milestone 5 wave 1: composite rules per group, neutral core fixtures, reordered alias tiers (tasks 26, 27, 29)
+
+Three disjoint tasks, 598 tests (520 core + 78 profiles), `BUILD SUCCESS`.
+None of it is new capability — every task implements a decision taken after
+milestone 4.
+
+**26 — the composite rule became selectable per group.** `SMALLEST | AVERAGE
+| STRONGEST` on each declared group, `composite(fields)` still meaning
+`SMALLEST`, additive by the `default` method pattern tasks 10 and 17
+established. A test implements `FellegiSunterModel` without overriding the new
+method and asserts it still reports `SMALLEST`, which is what keeps the
+interface change additive rather than merely claimed to be.
+
+The scorer had to change shape rather than gain a branch. It kept one member
+and suppressed the rest, which works whenever the group's weight *is* some
+member's weight — true for smallest and strongest, false for an average, whose
+mean is nobody's. That exposed a question the task file had not anticipated:
+under `AVERAGE` the carrying member reports a number that is not its own
+weight, and the ordinary contribution key would claim that field measured
+something it did not. It reports `compositeCombined` instead.
+
+**That answers the rule 7 amendment's own question.** Task 26 was the first
+task to write a design artefact under the amended rule, and owed a judgement on
+whether writing `docs/calibration.md` beside the code beat recording it
+afterwards. The `compositeCombined` key is the evidence: the choice only
+exists once you have seen that `AVERAGE` breaks the keep-one-member shape. A
+scribe recording the decision later would have documented all three rules
+correctly and had no reason to notice that one of them makes the explanation
+lie. The amendment earned its place on its first use.
+
+**27 — core's fixtures went neutral.** `ExternalPerson` → `IncomingRecord`,
+`Owner` → `StoredRecord`, and the members with them. The documented grep
+returns nothing over `jresolve-core/src`. D1's asymmetry was preserved
+deliberately — four members with a `List<String>` against five with a `String`
+— because a rename that made the two types symmetric would have destroyed what
+the suite proves. No assertion value moved, checked by diffing assertion
+literals rather than by eye.
+
+Its judgement: little was lost, but only because the loss was already paid for
+elsewhere. The renamed tests still document the mechanics; what goes is the
+motivation, and `BeatTheJoinTest` in `jresolve-profiles-ie` carries that. Had
+that test not existed, this rename would have cost something real — which is
+the argument for the rule, not against it.
+
+**29 — the alias tiers were reordered.** One production line at
+`DefaultAliasRepository:61`; everything else was tests. Exactly two
+expectations moved, both derived pairs spanning a translation edge and a
+nickname edge: `Pádraig`/`Paddy` through Patrick and `Liam`/`Will` through
+William. Every declared edge kept its declared kind. `BeatTheJoinTest` was run
+before and after — 13 tests, green both times, category assertions untouched —
+because Seán/John and Ó Súilleabháin/O'Sullivan are declared translation pairs
+rather than derived ones. Milestone 2's thesis does not move.
+
+Its judgement: task 15's implementer first wrote `Pádraig`/`Paddy` as a
+nickname and was corrected by the old ordering; the reorder puts their original
+expectation back. One data point rather than a pattern, but it is the only
+evidence for the new order that no argument produced — and the objection
+recorded in D7 still stands unrefuted.
+
+**The coverage gap task 29 found is the most reusable lesson.** Core's
+`DefaultAliasRepositoryTest` mixed variant with translation and never
+translation with nickname, so all 31 of its tests stayed green under a reorder
+of exactly those two tiers. The behaviour was pinned only in
+`jresolve-profiles-ie`. Three tests added, and reverting the production line
+now turns two of them red. A core behaviour exercised only through a profile is
+a core behaviour core does not pin.
+
+**Both new suites were mutation-checked rather than trusted for passing first
+time**, per the discipline milestone 1 established: forcing `compositeRuleFor`
+to return `SMALLEST` turns four of task 26's tests red, and reverting the tier
+order turns two of task 29's. In each case one new test stays green by design,
+and the commit says which and why rather than claiming the whole suite catches
+the regression.
+
+**Two findings about the checks rather than the code**, both from task 27 and
+both now in `PLAN.md`: the vocabulary rule collides with rule 6's required
+synthetic-data statement, and `dateOfBirth` escapes the documented grep
+entirely because "dob" is not a word inside it. The grep is necessary and not
+sufficient, and nothing enforces it at build time.
+
+**Two things were deliberately left for this pass rather than done in a task.**
+`PLAN.md` still named `ExternalPerson` and `Owner` in task 27's own
+description, and the three task files were unretired. Both sit outside every
+task's `Owns`, so rule 2 kept them out of the tasks that noticed them.
+
 ## 2026-09-17 — Eight standing questions decided; D19 closes and milestone 5 is named (decisions)
 
 No code changed. Every question this project had left to a maintainer was put
