@@ -400,7 +400,7 @@ class EndToEndResolutionTest {
     void missingValueOnOneSideIsMissingOneNotConflict() {
         IncomingRecord source = new IncomingRecord("Seán", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 Collections.singletonList("12 Main Street"));
-        // The stored record has no first name on file.
+        // The stored record has no label on file.
         StoredRecord candidate = new StoredRecord("stored-4", null, "O'Sullivan", LocalDate.of(1985, 6, 14), "12 Main Street");
 
         EntityResolver<IncomingRecord, StoredRecord> resolver = resolverWith(builder());

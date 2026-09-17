@@ -51,11 +51,28 @@ which is core's own vocabulary: `FieldDefinition.getName()`, `fieldName`,
 not, and never was: core cannot describe a field without naming it, and
 `src/main` has always carried about a hundred such uses.
 
-The checkable form:
+**This is enforced by the build, not by memory.**
+`DomainVocabularyTest` in `jresolve-core` reads the module's own sources and
+fails naming the file and line. It reads sources rather than compiled classes
+because the rule covers Javadoc, and Javadoc is not in the bytecode. It does
+not read `jresolve-profiles-ie`, which the rule does not bind.
 
-```
-rg -i '\b(address|person|dob|irish)\w*|\b(first|last|full|given)Name\b|\bsurname\b' jresolve-core/src
-```
+**What it cannot catch, stated so nobody mistakes a green build for a proof.**
+It matches text, and text does not distinguish a domain concept from an English
+word. `ComparisonCategory` says "the interned category with the given name",
+meaning the supplied one, so the spaced phrase "given name" is deliberately
+*not* banned — while the identifier `givenName` is. A domain concept named in
+words the pattern does not hold passes silently, and so does `getDOB`, whose
+capitalisation escapes the one token that still needs a word boundary. A clean
+run is necessary and not sufficient.
+
+**The sanctioned synthetic-data wording.** Rule 6 in `CLAUDE.md` requires a
+fixture to state that its values are invented, and the natural phrasing —
+"none names a real person" — is exactly what this rule forbids. Write **"none
+describes anyone real"** instead. The wording is prescribed rather than the
+statement exempted: an exemption is a hole the checker has to implement and a
+reader has to remember, where a sanctioned phrase costs one sentence here and
+keeps the check absolute.
 
 Test fixtures use neutral tokens for the same reason production code does. An
 end-to-end test naturally reaches for a consumer's vocabulary — core's
