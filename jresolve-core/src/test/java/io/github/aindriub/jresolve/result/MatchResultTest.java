@@ -3,6 +3,7 @@ package io.github.aindriub.jresolve.result;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -202,5 +203,89 @@ class MatchResultTest {
         MatchResult<Object> result = new MatchResult<>(Decision.MATCH, sentinelCandidate, score, null, new ArrayList<>());
 
         assertThat(result.toString()).doesNotContain("SENTINEL-CANDIDATE-VALUE");
+    }
+
+    // ------------------------------------------------- rejected candidates
+
+    @Test
+    void aResultBuiltWithoutRejectionsReportsAnEmptyList() {
+        // Every existing caller of the public constructor keeps working, and
+        // gets empty rather than null.
+        MatchResult<String> result =
+                new MatchResult<>(Decision.NO_MATCH, null, null, null, emptyCandidates());
+
+        assertThat(result.getRejectedCandidates()).isNotNull();
+        assertThat(result.getRejectedCandidates()).isEmpty();
+    }
+
+    @Test
+    void withRejectedCarriesThemAndLeavesTheOriginalAlone() {
+        MatchResult<String> original =
+                new MatchResult<>(Decision.NO_MATCH, null, null, null, emptyCandidates());
+
+        MatchResult<String> carrying = original.withRejected(
+                Arrays.asList(new RejectedCandidate<>("alpha", "resolver.rule.0")));
+
+        assertThat(carrying.getRejectedCandidates()).hasSize(1);
+        assertThat(original.getRejectedCandidates()).isEmpty();
+    }
+
+    @Test
+    void withRejectedPreservesEveryOtherField() {
+        // A copy-with that quietly dropped state would be worse than no
+        // accessor at all.
+        List<ScoredCandidate<String>> candidates = Arrays.asList(
+                new ScoredCandidate<>("alpha", sampleScore(), java.util.Collections.emptyList()));
+        MatchResult<String> original = new MatchResult<>(
+                Decision.MATCH, "alpha", sampleScore(), null, candidates);
+
+        MatchResult<String> carrying = original.withRejected(
+                Arrays.asList(new RejectedCandidate<>("bravo", "resolver.rule.0")));
+
+        assertThat(carrying.getDecision()).isEqualTo(original.getDecision());
+        assertThat(carrying.getMatch()).isEqualTo(original.getMatch());
+        assertThat(carrying.getScore()).isEqualTo(original.getScore());
+        assertThat(carrying.getSecondBestScore()).isEqualTo(original.getSecondBestScore());
+        assertThat(carrying.getCandidates()).isEqualTo(original.getCandidates());
+    }
+
+    @Test
+    void withRejectedCopiesDefensively() {
+        List<RejectedCandidate<String>> supplied = new ArrayList<>();
+        supplied.add(new RejectedCandidate<>("alpha", "resolver.rule.0"));
+
+        MatchResult<String> carrying =
+                new MatchResult<String>(Decision.NO_MATCH, null, null, null, emptyCandidates())
+                        .withRejected(supplied);
+        supplied.add(new RejectedCandidate<>("bravo", "resolver.rule.1"));
+
+        assertThat(carrying.getRejectedCandidates()).hasSize(1);
+    }
+
+    @Test
+    void theRejectedListIsUnmodifiable() {
+        MatchResult<String> carrying =
+                new MatchResult<String>(Decision.NO_MATCH, null, null, null, emptyCandidates())
+                        .withRejected(Arrays.asList(new RejectedCandidate<>("alpha", "resolver.rule.0")));
+
+        assertThatThrownBy(() -> carrying.getRejectedCandidates()
+                .add(new RejectedCandidate<>("bravo", "resolver.rule.1")))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void withRejectedRejectsNull() {
+        assertThatThrownBy(() ->
+                new MatchResult<String>(Decision.NO_MATCH, null, null, null, emptyCandidates())
+                        .withRejected(null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private static List<ScoredCandidate<String>> emptyCandidates() {
+        return java.util.Collections.emptyList();
+    }
+
+    private static Score sampleScore() {
+        return new Score(10.0, ScoreScale.POINTS, "TEST", null);
     }
 }

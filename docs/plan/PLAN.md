@@ -115,11 +115,12 @@ ordering claim still held under the defect, so a test asserting only "rare
 beats common" would have passed and shipped it — the hand-derived absolute
 value is what failed.
 
-## Milestone 5 — wave 1 complete, wave 2 open
+## Milestone 5 — complete except for a gate no code closes
 
 Five items, none of them new capability: every one is the consequence of a
-decision taken after milestone 4. Wave 1 landed at 598 tests (520 core + 78
-profiles), `BUILD SUCCESS`.
+decision taken after milestone 4. Both waves are complete at 621 tests
+(543 core + 78 profiles), `BUILD SUCCESS`. Only task 28 remains, and no
+amount of code closes it.
 
 ### Wave 1 — complete
 
@@ -134,14 +135,16 @@ profiles), `BUILD SUCCESS`.
   `ALIAS_TRANSLATION` > `ALIAS_NICKNAME`, per D7. Two derived-pair expectations
   moved; every declared edge held; `BeatTheJoinTest` green before and after.
 
-### Wave 2 — open
+### Wave 2 — complete
 
-- [ ] **25 — Explainable rejection.** `MatchResult` carries the candidates a
-  `CandidateRule` vetoed and the rule that vetoed each. Today a veto returns
-  null from `DefaultEntityResolver:101` and the candidate vanishes, so a
-  consumer cannot tell one that scored badly from one that was never scored.
-  D4 is explicit that dropping is correct; this closes the explanation gap
-  dropping leaves. Its task file is the only one left in `tasks/`.
+- [x] **25 — Explainable rejection.** `MatchResult.getRejectedCandidates()`
+  carries each vetoed candidate with the rule that vetoed it, so a consumer can
+  tell one that scored badly from one that was never scored. Additive by
+  copy-with: the resolver attaches rejections *after* the engine has decided,
+  which makes it structurally impossible for a veto to reach the decision.
+  Rules are identified by configured position rather than name — forced by
+  measurement, since every `CandidateRule` is a lambda and a lambda's class
+  name is not stable across builds.
 
 ### No wave — a gate, not a task
 
@@ -193,8 +196,8 @@ build.
   of the repo) — see `docs/architecture.md#building`. In Claude Code on the
   web this is provisioned automatically by
   `.claude/hooks/session-start.sh`; on a local machine it is still manual.
-- `mvn clean verify` baseline at milestone 6's close is 602 tests
-  (524 core + 78 profiles), `BUILD SUCCESS`.
+- `mvn clean verify` baseline at task 25's close is 621 tests
+  (543 core + 78 profiles), `BUILD SUCCESS`.
 - Two gates now fail the build on things a reviewer used to catch by eye:
   `DomainVocabularyTest` on domain vocabulary in core, and javadoc doclint on a
   reference that no longer resolves. Both are described where the rules they
@@ -278,6 +281,21 @@ not close all five, and the two below say so rather than being ticked.
   and none of that coverage said anything about the pair. Combinations grow
   faster than anyone writes tests, and no single-line mutation probe finds a
   missing one. Unsolved, and now correctly stated.
+
+### Raised by task 25
+
+- **`MatchResult` now holds two parallel lists that must not overlap, and
+  nothing in the type prevents it.** A scored candidate and a rejected one are
+  mutually exclusive by construction in `DefaultEntityResolver`, and the
+  invariant is asserted by a test rather than made unrepresentable. Two lists
+  is manageable; a third would be the point to stop and reshape the type. Named
+  now so that a later reader finds a recorded trade rather than an oversight.
+- **A rule is identified by position, which is stable but not descriptive.**
+  `resolver.rule.2` tells a consumer which of their own rules vetoed a
+  candidate, and nothing about why. A `default` accessor on `CandidateRule`
+  would allow a name, and is additive whenever someone wants one — it was not
+  added now because every rule in this library is a lambda, and a lambda cannot
+  override a default method, so the accessor would today serve nobody.
 
 ### Raised in milestone 6
 

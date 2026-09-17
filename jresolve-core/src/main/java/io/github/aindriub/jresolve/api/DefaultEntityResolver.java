@@ -5,6 +5,7 @@ import io.github.aindriub.jresolve.evidence.FieldEvidence;
 import io.github.aindriub.jresolve.evidence.MatchEvidence;
 import io.github.aindriub.jresolve.field.FieldDefinition;
 import io.github.aindriub.jresolve.result.MatchResult;
+import io.github.aindriub.jresolve.result.RejectedCandidate;
 import io.github.aindriub.jresolve.result.ScoredCandidate;
 import io.github.aindriub.jresolve.scoring.MatchScorer;
 import io.github.aindriub.jresolve.scoring.ScoringResult;
@@ -30,6 +31,15 @@ import java.util.Map;
  * @param <C> the candidate record type; owned entirely by the consumer
  */
 final class DefaultEntityResolver<S, C> implements EntityResolver<S, C> {
+
+    /**
+     * Rules are identified by their configured position: a
+     * {@code CandidateRule} is a functional interface, every rule in this
+     * library and its tests is written as a lambda, and a lambda's
+     * generated class name is not stable across builds. Position is
+     * stable, and it is what the consumer chose.
+     */
+    private static final String RULE_KEY_PREFIX = "resolver.rule.";
 
     private final List<List<FieldDefinition<S, C, ?>>> tiers;
     private final List<FieldDefinition<S, C, ?>> fields;
@@ -80,19 +90,30 @@ final class DefaultEntityResolver<S, C> implements EntityResolver<S, C> {
         }
 
         List<ScoredCandidate<C>> scored = new ArrayList<ScoredCandidate<C>>();
+        List<RejectedCandidate<C>> rejected = new ArrayList<RejectedCandidate<C>>();
         for (C candidate : candidates) {
             if (candidate == null) {
                 continue;
             }
-            ScoredCandidate<C> result = resolveOne(source, candidate, preparedSource);
+            ScoredCandidate<C> result = resolveOne(source, candidate, preparedSource, rejected);
             if (result != null) {
                 scored.add(result);
             }
         }
-        return decisionEngine.decide(scored);
+        // The rejections are attached after the engine has decided, so a veto
+        // cannot reach the decision even by accident: the engine sees exactly
+        // what it saw before this signal existed.
+        return decisionEngine.decide(scored).withRejected(rejected);
     }
 
-    private ScoredCandidate<C> resolveOne(S source, C candidate, Map<String, Object> preparedSource) {
+    /**
+     * @param rejectedOut collects a veto, so a dropped candidate is recorded
+     *     rather than lost. A candidate is added here only for a rule veto,
+     *     never for unscorable evidence: those are different outcomes, and
+     *     merging them would report a scorer's refusal as a rule's rejection.
+     */
+    private ScoredCandidate<C> resolveOne(S source, C candidate, Map<String, Object> preparedSource,
+            List<RejectedCandidate<C>> rejectedOut) {
         Map<String, FieldEvidence> evidenceSoFar = new LinkedHashMap<String, FieldEvidence>();
         for (List<FieldDefinition<S, C, ?>> tier : tiers) {
             for (FieldDefinition<S, C, ?> field : tier) {
@@ -100,8 +121,12 @@ final class DefaultEntityResolver<S, C> implements EntityResolver<S, C> {
             }
             MatchEvidence evidenceGatheredSoFar =
                     new MatchEvidence(evidenceSoFar, evidenceSoFar.size() == fields.size());
-            for (CandidateRule<S, C> rule : rules) {
-                if (rule.evaluate(source, candidate, evidenceGatheredSoFar) == RuleDecision.REJECT) {
+            for (int i = 0; i < rules.size(); i++) {
+                if (rules.get(i).evaluate(source, candidate, evidenceGatheredSoFar)
+                        == RuleDecision.REJECT) {
+                    // Returning here is what short-circuits the remaining cost
+                    // tiers: the candidate is recorded, not compared further.
+                    rejectedOut.add(new RejectedCandidate<C>(candidate, RULE_KEY_PREFIX + i));
                     return null;
                 }
             }
