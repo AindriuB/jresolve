@@ -154,6 +154,40 @@ contract had not anticipated, and both findings are about the checks rather
 than the code — see the gaps below. The third, task 29, closed a coverage gap
 that had made a whole test class blind to the behaviour it existed to pin.
 
+## Milestone 6 — the rules check themselves
+
+Wave 1 of milestone 5 found that three of this project's own rules were not
+checked by anything, and had been quietly violated for milestones. This closes
+the five gaps it raised.
+
+**The thesis, stated so it can fail:** every rule this repository states about
+itself either fails the build when violated, or says in its own text that it
+cannot. No rule sits in the middle, asserted but unchecked.
+
+Three tasks, file sets disjoint, safe in parallel.
+
+- [ ] **30 — The domain-vocabulary rule is enforced by the build.** Closes
+  three gaps at once, because they are one rule's problem: the collision with
+  rule 6's synthetic-data statement, the incomplete token list, and the absence
+  of any enforcement. A `DomainVocabularyTest` in core reads the module's own
+  sources and fails on a violation, the way `ModuleBoundaryTest` asserts what a
+  test there honestly can.
+- [ ] **31 — A stale cross-file reference fails the build.** Javadoc runs with
+  doclint as part of `verify`, so a `{@link}` to a renamed type breaks rather
+  than rotting. Core currently produces **zero** javadoc warnings, so the gate
+  costs nothing to adopt and only constrains what comes next.
+- [ ] **32 — Core pins its own behaviour.** The three `default` methods on core
+  interfaces are behaviour living on the interface itself, and the most likely
+  place for a behaviour whose only coverage is elsewhere. Each gets a test
+  proving a non-overriding implementation receives the documented fallback.
+
+**What this milestone cannot do, and says so.** A checker over source text
+cannot tell a domain concept from an English word — `ComparisonCategory:42`
+says "the given name" meaning the supplied one, and no regex distinguishes that
+from a forename. Nor can any build gate catch a comment that describes
+neighbouring code wrongly while naming nothing. Both limits belong in the
+rules' own text rather than in a reviewer's memory.
+
 ## Notes for implementers
 
 - `jresolve-core` needs a JDK 17 toolchain (`~/.m2/toolchains.xml`, not part
