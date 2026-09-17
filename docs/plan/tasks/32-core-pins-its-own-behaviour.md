@@ -42,3 +42,57 @@ in `PLAN.md` either way.
 - A general coverage audit of core, or a coverage tool. This task searches one named place.
 - Changing any production behaviour. If a `default` method's documented fallback and its actual one disagree, stop and report — that is a defect, not this task's to fix.
 - `jresolve-profiles-ie`.
+
+---
+
+## Outcome: no tests added, and why
+
+**All three `default` methods were already pinned.** The audit found nothing to
+close.
+
+- `FieldEvidence.getSubsumption()` — `FieldEvidenceDefaultsTest` already
+  implements the interface without overriding it and asserts `NOT_APPLICABLE`,
+  with the reasoning in a comment: `NEITHER` would claim containment was
+  computed and did not hold, which such an implementation never claimed. That
+  is this task's acceptance criterion, written before this task existed.
+- `MatchDecisionEngine.declaredThresholds()` — `EntityResolverBuilderTest:352`
+  asserts an engine that does not override it returns null, that `build()`
+  accepts that engine, and that the resolver still decides. Both halves of the
+  criterion, already covered.
+- `FellegiSunterModel.compositeRuleFor()` — covered by task 26, as this file
+  predicted.
+
+Adding tests here would have duplicated coverage, so none were added.
+
+## What the audit did instead, and what it found
+
+`default` methods were the wrong place to look, so the hypothesis was tested
+directly by task 29's own method: mutate a core production behaviour, run
+**core's tests alone**, and see whether core catches it or only
+`jresolve-profiles-ie` does.
+
+| Probe | Result |
+|---|---|
+| `SimilarityBands` returns `HIGH` where it should return `VERY_HIGH` | core catches it |
+| The alias strength tiers are scrambled | core catches it |
+| An alias hit carries a similarity it should not | core catches it |
+| `DefaultTokenSplitter` drops digits | core catches it |
+
+Four probes, four catches. **Core does pin the behaviours probed**, and the
+blind spot task 29 found was not the general condition the gap described.
+
+## The gap, corrected
+
+What task 29 actually hit was narrower than "core behaviour covered only in
+profiles". Every individual behaviour was pinned; what was missing was a
+**combination** — the merge of a translation edge with a nickname edge, a pair
+of categories no core test put together. Single-behaviour coverage was
+complete and told nobody anything about the pair.
+
+That is a different and harder problem than the gap as written, because the
+combinations of a value type grow faster than anyone writes tests, and no
+mutation probe of a single line finds a missing pair. `PLAN.md` should carry
+this correction rather than record the gap as closed.
+
+The probe method above is worth re-running when a core behaviour looks thinly
+covered. It is cheap, and a negative result from it is meaningful.
