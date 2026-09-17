@@ -5,6 +5,7 @@
 **Owns:**
 - jresolve-core/src/main/java/io/github/aindriub/jresolve/field/TokenSubsumptionComparator.java
 - jresolve-core/src/test/java/io/github/aindriub/jresolve/field/TokenSubsumptionComparatorTest.java
+- jresolve-core/src/test/java/io/github/aindriub/jresolve/field/FieldComparatorNullSafetyTest.java *(amendment, see below)*
 
 ## Goal
 The generic half of D9. A comparator that reports whether one side's tokens are
@@ -31,6 +32,22 @@ applies it.
 - [ ] Empty token sets on one or both sides are defined and tested, and the choice is defensible against `MISSING_ONE` / `MISSING_BOTH` semantics — an empty-after-tokenising value is not the same as a null value. State the distinction.
 - [ ] Null handling is inherited, not reimplemented.
 - [ ] No type, member or Javadoc word in this file names a person, name, address, date of birth or country. In particular no test fixture uses a real locality; use neutral tokens.
+
+## Planning amendment (at implementation)
+
+`field/FieldComparatorNullSafetyTest.java` sweeps every comparator in the
+package for null safety from a **manual** list — its `hasSize` assertion is a
+tripwire on that list, not on the package, so a comparator added and never
+listed is covered by nothing (see the corrected comment task 12 left there).
+Tasks 13 and 14 both add a comparator to `field/` and neither owned the file.
+
+It is assigned to **task 14**, which lands second and registers both new
+comparators in one edit. Giving it to both would put two tasks in one file,
+which is the clash `Owns` exists to prevent.
+
+The gap this leaves is narrow and deliberate: between 13 and 14 landing, the
+alias comparator's null handling is covered by its own test (task 13 asserts
+all four combinations) but not by the package-wide sweep. Task 14 closes it.
 
 ## Out of scope
 - Anything address-shaped — naming, street/locality structure, postcode handling. That is task 15, in the profiles module.
