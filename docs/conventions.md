@@ -40,10 +40,29 @@ Do not name a class `<Thing>Impl`.
 No abbreviations except `id`, `url`, `api`, `jw` (Jaro-Winkler in local scope
 only). Spell out `evidence`, `candidate`, `normalizer`, `probability`.
 
-**`jresolve-core` may not name a domain concept.** No `name`, `address`,
-`person`, `dob`, `irish` in any core type, member, package or Javadoc. This is
-the boundary from `docs/architecture.md` and it is checkable by grep on the
-diff.
+**`jresolve-core` may not name a domain concept.** No `address`, `person`,
+`dob` or `irish` anywhere in the module — type, member, package or Javadoc, in
+`src/test` as well as `src/main`.
+
+`name` is banned in its **personal** sense — `firstName`, `lastName`,
+`fullName`, `givenName`, `surname` — and permitted for a field's identifier,
+which is core's own vocabulary: `FieldDefinition.getName()`, `fieldName`,
+`requiredFieldNames`. That distinction is the rule. A bare grep for `name` is
+not, and never was: core cannot describe a field without naming it, and
+`src/main` has always carried about a hundred such uses.
+
+The checkable form:
+
+```
+rg -i '\b(address|person|dob|irish)\w*|\b(first|last|full|given)Name\b|\bsurname\b' jresolve-core/src
+```
+
+Test fixtures use neutral tokens for the same reason production code does. An
+end-to-end test naturally reaches for a consumer's vocabulary — core's
+`endtoend/` package did exactly that — which is why this rule names the sources
+it binds instead of leaving a reviewer to judge each hit by its path.
+Domain-shaped fixtures belong in `jresolve-profiles-ie`, where the vocabulary is
+the point.
 
 ## Errors
 

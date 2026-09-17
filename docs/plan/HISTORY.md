@@ -3,6 +3,88 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-17 — Eight standing questions decided; D19 closes and milestone 5 is named (decisions)
+
+No code changed. Every question this project had left to a maintainer was put
+and answered, and each answer is recorded where the rule itself lives rather
+than only here.
+
+**D19 closes entirely.** Maven coordinates confirmed as
+`io.github.aindriub:jresolve-*`, with publication to Maven Central intended —
+settled while the cost of changing it is still zero. Phonetics do not ship in
+v1: D8's low-yield reasoning stands, and the dependency route would reopen a
+boundary `docs/architecture.md` argues is a boundary rather than a preference.
+Alias-corpus provenance becomes a **release gate** — nothing publishes until a
+licensed source replaces the hand-written tables. That is the only one of the
+three that blocks anything, and it blocks publication rather than development.
+
+**D4 was wrong and the code was right.** D4 said a `CandidateRule` veto yields
+evidence flagged `isComplete() == false` and hands it to the scorer, which
+refuses it. The resolver has always dropped the candidate at `:101`. The
+decision amends D4, and the reason is checkable rather than aesthetic:
+`RuleBasedScorer:72` refuses only on a missing *required* field and never
+inspects `isComplete()`, so routing a vetoed candidate's partial evidence to it
+would let the tiers that did run score above `matchThreshold` — making a hard
+veto overridable by a score. Dropping keeps a veto final. What dropping costs is
+that a vetoed candidate is invisible in `MatchResult`; that is an explanation
+gap, now task 25, rather than an argument for changing the path.
+
+**The alias strength ordering is swapped to `ALIAS_VARIANT` >
+`ALIAS_TRANSLATION` > `ALIAS_NICKNAME`**, reversing what the code shipped with.
+Decided twice: confirmed as-is first, then reopened and swapped. The case for is
+that a translation is a name-identity mapping across languages where a nickname
+is many-to-one and optional. The case against was put by this session and
+overruled — Irish anglicisation is often arbitrary rather than semantic
+(Siobhán→Judith, →Julia), which would make a translation edge the loosest of
+the three. Both arguments are in D7 so the objection is not rediscovered from
+scratch. This is the only decision in the pass that carries a code change: task
+29, one line at `DefaultAliasRepository:61` and seven test files behind it,
+`BeatTheJoinTest` among them.
+
+**The illustrative alias accessor is not renamed.** Proposed alongside the
+release gate and declined: the Javadoc already marks the tables illustrative in
+its first paragraph, and task 28 replaces them outright, so a rename now is a
+rename twice.
+
+**The composite combination rule becomes selectable per group.**
+`composite(fields, rule)` takes `SMALLEST | AVERAGE | STRONGEST` on each
+declared group; `composite(fields)` still means `SMALLEST`, so nothing already
+shipped changes. A single global setting was taken first and reversed the same
+day: correlation strength is a property of the fields in a group, not of the
+model that holds them, so a model with one tightly-coupled group and one barely
+coupled group cannot express both with a single answer. The caveat
+is in D11 and belongs in `calibration.md` — `u` is measurable and `m` is
+estimable, but nothing tells a consumer how to choose a combination rule, and a
+knob without a procedure is one somebody turns until the score looks better.
+
+**Both maintainer questions are rules now.** Rule 7 admits a design artefact: a
+doc whose content is a design output and which code cites is written by the role
+that owns the design, so task 23's exception became a rule and the next such
+file does not re-litigate it. The domain-vocabulary rule binds `src/test` as
+well as `src/main`, with no exceptions to the grep; domain-shaped fixtures
+belong in `jresolve-profiles-ie`, where the vocabulary is the point.
+
+**Amending the rule exposed that it had never been checkable.** It banned the
+bare token `name`, and `src/main` carries about a hundred uses of it —
+`FieldDefinition.getName()`, `fieldName`, `requiredFieldNames` — because core
+cannot describe a field without naming it. So the grep the rule called itself
+checkable by had been failing on production code all along, and the ~50 figure
+`PLAN.md` had carried for the test fixtures was an estimate nobody had run. The
+rule now bans `address`, `person`, `dob` and `irish` outright and `name` only in
+its personal sense (`firstName`, `lastName`, `surname`), and `conventions.md`
+carries the exact command.
+
+**One deliberate inconsistency, dated rather than silent.** Under that grep
+`src/main` is clean and core's tests carry **112 hits across exactly four
+files**, all in `endtoend/`: `EndToEndResolutionTest` (88), `ExternalPerson`
+(12), `Owner` (11), `FellegiSunterResolutionTest` (1). Two are type names, so
+task 27 renames the fixture types as well as their members. Until it lands the
+rule outruns the code, and `PLAN.md` says so in those words.
+
+**Milestone 5 is named, not planned.** Tasks 25–28: explainable rejection, the
+selectable composite rule, the fixture rename, and the sourced corpus. No task
+files exist yet and nothing is started.
+
 ## 2026-09-17 — Milestone 4 complete: Fellegi-Sunter ships, and its end-to-end test earns its keep (tasks 23, 24)
 
 `FellegiSunterResolutionTest` drives the probabilistic path through a whole

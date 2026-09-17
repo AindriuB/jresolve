@@ -47,4 +47,9 @@ Out of band, any time: `/recon <question>`, `/design <question>`.
 4. Prefer `rg` over `grep`, and read ranges over whole files.
 5. Java 8 is a hard target, not a preference. `mvn verify` enforces it.
 6. No real personal data anywhere — test fixtures are synthetic.
-7. Only `scribe` writes docs. Only `implementer` writes code.
+7. Only `implementer` writes code. `scribe` writes the planning record —
+   `PLAN.md`, `HISTORY.md`, `HISTORY-INDEX.md`, task files. A *design artefact*
+   — a doc whose content is a design output and which code cites, such as
+   `docs/calibration.md` — is written by the role that owns the design, because
+   its content is decided by whoever derived it rather than by whoever records
+   the work.

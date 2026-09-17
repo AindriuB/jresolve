@@ -107,9 +107,25 @@ separate categories.
 `MatchScorer.score(evidence)` requires evidence for every field, so nothing can
 be skipped. Fields declare a `cost` tier; the resolver compares in ascending
 cost and evaluates hard `CandidateRule`s between tiers. A rejection short-
-circuits the remaining tiers and yields evidence flagged `isComplete() == false`.
-A scorer that cannot score partial evidence rejects it explicitly rather than
-treating the absent fields as `MISSING_BOTH`, which would be a silent lie.
+circuits the remaining tiers and **drops the candidate**. A hard rule's `REJECT`
+means "not a match, whatever the score", so it is final and no scorer sees the
+partial evidence.
+
+*Amended after milestone 4.* This entry first said a rejection yields evidence
+flagged `isComplete() == false` and hands it to the scorer, which refuses it.
+The code never did that, and the code is right. `RuleBasedScorer` does not
+inspect `isComplete()` — it refuses only on a missing *required* field — so
+handing it a vetoed candidate's partial evidence would let it score the tiers
+that did run and return a result above `matchThreshold`. That makes a hard veto
+overridable by a score, which is the opposite of what a hard veto is for.
+
+`MatchEvidence.isComplete()` stays meaningful for a consumer assembling evidence
+directly, and `FellegiSunterScorer` refuses incomplete evidence explicitly
+rather than treating the absent fields as `MISSING_BOTH`, which would be a
+silent lie. The cost of dropping is that a vetoed candidate is invisible in
+`MatchResult` — neither the candidate nor the rule that vetoed it is reported.
+That is an explanation gap rather than a scoring one, and closing it means
+carrying rejected candidates on the result, not changing this path.
 
 ## D5 — Fellegi-Sunter gains prior odds and frequency-adjusted `u`
 
@@ -194,6 +210,28 @@ assigns each its weight. An FS model can then learn that a nickname agreement
 and a translation agreement carry different evidence, which a single `strength`
 number cannot represent.
 
+**The ordering is `ALIAS_VARIANT` > `ALIAS_TRANSLATION` > `ALIAS_NICKNAME`.**
+`DefaultAliasRepository` resolves a mixed merge by maximum-bottleneck path, so
+these tiers decide what a *derived* pair claims. The middle two were swapped by
+the maintainer after milestone 4, reversing the order the code shipped with.
+
+The case for the swap: a translation is a name-identity mapping — Pádraig and
+Patrick are one name in two languages — where a nickname is many-to-one and
+optional, since every Paddy is a Patrick but most Patricks are never Paddy. On
+that reading a translation claims more about closeness than a diminutive does.
+
+The case against is recorded here because it is the stronger objection and
+should not have to be rediscovered: Irish anglicisation is frequently arbitrary
+rather than semantic. Siobhán was anglicised to Judith and to Julia, which are
+not renderings of the same name in any meaningful sense. Wherever that pattern
+dominates, a translation edge is the loosest of the three and this ordering
+overstates it. The maintainer weighed the objection and chose the swap; a later
+reviewer whose data is dominated by arbitrary anglicisations should read this
+paragraph as the reason to revisit, not as an oversight.
+
+The builder rejects any category outside those three precisely because admitting
+one means placing it in that order.
+
 ## D8 — Ó Súilleabháin is an alias problem, not a normalization one
 
 *Amends §64.*
@@ -268,6 +306,30 @@ The library cannot fix this, but it must not hide it. `docs/calibration.md`
 states the assumption and where it fails, `FellegiSunterScorer`'s Javadoc
 repeats it, and the model supports declaring two fields as one composite
 comparison for the cases where a consumer wants to handle it.
+
+**The combination rule is declared per composite group, defaulting to the
+smallest member.** A composite group contributes the smallest weight among its
+present members: when the scorer cannot know how much of the signal is shared,
+the group should claim no more than its least favourable member, and
+overconfidence is the failure mode already in play. Averaging the members or
+taking the strongest are defensible, so the rule is selectable rather than
+fixed — and it is selected **on the group, not on the model**, because
+correlation strength is a property of the fields in a group rather than of the
+model that holds them. A model whose surname/address group is tightly coupled
+and whose two-part-identifier group is barely coupled cannot express both with
+one setting, and forcing it to would push one of the two toward exactly the
+overconfidence this entry exists to name.
+
+`composite(fields)` keeps its meaning and defaults to `SMALLEST`, so nothing
+already built changes; `composite(fields, rule)` is the overload that says
+otherwise.
+
+The caveat belongs here rather than being discovered later. `u` is measurable
+from a corpus and `m` is estimable by EM, but there is no standard procedure for
+choosing a combination rule. A consumer who has not measured the within-group
+correlation has no basis to move off the default, and `docs/calibration.md` says
+so — a knob without a procedure is one somebody turns until the score looks
+better.
 
 ## D12 — Redundant state removed from the result types
 
@@ -404,16 +466,23 @@ correct. §62's treatment of missing data as non-contradictory, §63's separatio
 of conflict from zero similarity, §96's determinism requirement and §104's
 privacy rules are all kept as written.
 
-## D19 — Open questions
+## D19 — Questions now answered
 
-Not decisions. These need an answer before the code that depends on them.
+These were open, and blocked the code that depends on them. All three were
+decided after milestone 4.
 
-- **Maven coordinates.** `io.github.aindriub:jresolve-*` with base package
-  `io.github.aindriub.jresolve` assumes publication to Maven Central under the
-  GitHub-derived namespace. An internal-only library would use a different
-  group, and changing it later is a breaking change for every consumer.
-- **Alias corpus provenance.** The Irish/English and nickname tables need a
-  source with a licence compatible with this project's. Hand-written
-  illustrative fixtures are enough for tests but not for a release.
-- **Whether phonetics ship at all in v1.** They are low-yield next to a good
-  alias table (D8) and add a dependency or a nontrivial hand-written ruleset.
+- **Maven coordinates: confirmed.** `io.github.aindriub:jresolve-*` with base
+  package `io.github.aindriub.jresolve` stands, and publication to Maven Central
+  under the GitHub-derived namespace is the intent. Settled while the cost of
+  changing it is still zero.
+- **Alias corpus provenance: blocking.** The Irish/English and nickname tables
+  must come from a source whose licence is compatible with this project's before
+  any release. Hand-written illustrative fixtures are enough for tests and are
+  not enough to ship. `IrishNameAliases` says so in its first Javadoc paragraph
+  and keeps saying so until a sourced corpus replaces it. **No release until
+  then** — this is the one answer here that gates publication.
+- **Phonetics do not ship in v1.** D8's reasoning stands: they are low-yield next
+  to a good alias table, and both routes to them cost more than the gain. A
+  hand-written ruleset is nontrivial to maintain, and a dependency would reopen
+  a boundary `docs/architecture.md` argues is a boundary rather than a
+  preference.
