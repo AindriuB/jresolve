@@ -45,8 +45,9 @@ import org.junit.jupiter.api.Test;
  * </pre>
  *
  * <p>Nothing here is read off a run. Fixtures are two neutral record types
- * declared below; the domain-shaped fixtures in this package belong to the
- * rule-based suite and would name a person if imported here.
+ * declared below, kept separate from this package's shared fixtures because
+ * this suite's weights are hand-derived from its own {@code m} and {@code u}
+ * values and must not drift with a change made for the rule-based suite.
  */
 class FellegiSunterResolutionTest {
 

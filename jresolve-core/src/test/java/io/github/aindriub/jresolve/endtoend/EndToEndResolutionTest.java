@@ -49,23 +49,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The milestone gate: assembles a whole resolver from a consumer's seat —
- * {@link ExternalPerson} as the source, {@link Owner} as the candidate — and
+ * {@link IncomingRecord} as the source, {@link StoredRecord} as the candidate — and
  * proves the layers compose end to end.
  *
  * <p>Every source and candidate value used below is invented for this file;
- * none names a real person, and none is drawn from any public dataset.
+ * none describes anyone real, and none is drawn from any public dataset.
  *
  * <p><strong>What this milestone does not yet cover:</strong> there is no
- * alias repository (D7) and no address comparison pipeline (D9) in the
+ * alias repository (D7) and no locator comparison pipeline (D9) in the
  * merged code, so a source/candidate pair such as {@code "Seán"} and
  * {@code "John"} does not score as an alias match here — it falls through to
  * a low string-similarity band, exactly as an unrelated pair would. §88
- * expects {@code ALIAS} for that firstName pair and {@code VERY_HIGH} for the
- * address pair below; this milestone produces {@code LOW} and {@code MEDIUM}
+ * expects {@code ALIAS} for that label pair and {@code VERY_HIGH} for the
+ * locator pair below; this milestone produces {@code LOW} and {@code MEDIUM}
  * instead, and closing that gap is D7's and D9's job, not this test's.
  *
  * <p><strong>Those now exist, and this suite still does not use them.</strong>
- * The alias repository and the address pipeline live in
+ * The alias repository and the locator pipeline live in
  * {@code jresolve-profiles-ie}, and {@code jresolve-core} cannot depend on
  * that module — the dependency runs the other way and a test-scoped edge
  * would cycle the reactor. So this file keeps the generic comparators on
@@ -76,117 +76,117 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * A reader who wants to know whether a fuzzy field decides anything should
  * look there, not here.
  *
- * <p><strong>What actually decides §88 today:</strong> lastName EXACT (30)
- * plus dateOfBirth EXACT (25) already total 55, above the 50-point match
- * threshold, before firstName or address contribute anything. The two fuzzy
+ * <p><strong>What actually decides §88 today:</strong> serial EXACT (30)
+ * plus issuedOn EXACT (25) already total 55, above the 50-point match
+ * threshold, before label or locator contribute anything. The two fuzzy
  * fields — the ones §88 exists to demonstrate — net only +10 between them:
- * firstName is a −5 penalty and address a +15 contribution. In plain terms,
+ * label is a −5 penalty and locator a +15 contribution. In plain terms,
  * the positive scenario below
  * would pass as a two-exact-key join — the same outcome a plain SQL join on
- * surname and date of birth would produce. That is an honest statement of
+ * {@code serial} and {@code issuedOn} would produce. That is an honest statement of
  * where this library stands after milestone 1, not a weakened stand-in for
- * §88; D7 (alias repository) and D9 (address pipeline) are what would make
+ * §88; D7 (alias repository) and D9 (locator pipeline) are what would make
  * the fuzzy fields actually carry weight.
  */
 class EndToEndResolutionTest {
 
     // --- Shared pipeline and scorer configuration -------------------------
     //
-    // firstName and address both use Levenshtein similarity so every
+    // label and locator both use Levenshtein similarity so every
     // expected category below is derived from a hand-computed edit distance
     // in each test's comment, never from a value produced by running the
-    // comparator. lastName and dateOfBirth are exact-match fields, so their
+    // comparator. serial and issuedOn are exact-match fields, so their
     // categories follow directly from equality after normalization.
 
-    private static FieldPipeline<String, String> firstNamePipeline() {
+    private static FieldPipeline<String, String> labelPipeline() {
         StringNormalizer normalizer = new CompositeNormalizer(Arrays.asList(
                 new UnicodeFormNormalizer(), new CombiningMarkNormalizer(), new CaseFoldNormalizer()));
         return new DefaultFieldPipeline<>(
                 normalizer::normalize, new SimilarityFieldComparator(new LevenshteinSimilarity(), new SimilarityBands()));
     }
 
-    private static FieldPipeline<String, String> lastNamePipeline() {
+    private static FieldPipeline<String, String> serialPipeline() {
         StringNormalizer normalizer = new CompositeNormalizer(Arrays.asList(
                 new UnicodeFormNormalizer(), new CombiningMarkNormalizer(),
                 new ApostropheVariantNormalizer(), new CaseFoldNormalizer()));
         return new DefaultFieldPipeline<>(normalizer::normalize, new ExactFieldComparator<>());
     }
 
-    private static FieldPipeline<LocalDate, LocalDate> dateOfBirthPipeline() {
+    private static FieldPipeline<LocalDate, LocalDate> issuedOnPipeline() {
         return new DefaultFieldPipeline<>(value -> value, new ExactFieldComparator<>());
     }
 
-    private static final StringNormalizer ADDRESS_NORMALIZER = new CompositeNormalizer(Arrays.asList(
+    private static final StringNormalizer LOCATOR_NORMALIZER = new CompositeNormalizer(Arrays.asList(
             new CaseFoldNormalizer(),
             new PunctuationNormalizer(new LinkedHashSet<>(Arrays.asList('.', ','))),
             new WhitespaceNormalizer()));
 
-    private static String normalizeAddressLines(List<String> lines) {
-        return ADDRESS_NORMALIZER.normalize(String.join(" ", lines));
+    private static String normalizeLocatorLines(List<String> lines) {
+        return LOCATOR_NORMALIZER.normalize(String.join(" ", lines));
     }
 
-    private static String normalizeAddressLine(String line) {
-        return ADDRESS_NORMALIZER.normalize(line);
+    private static String normalizeLocatorLine(String line) {
+        return LOCATOR_NORMALIZER.normalize(line);
     }
 
-    private static FieldComparator<String> addressComparator() {
+    private static FieldComparator<String> locatorComparator() {
         return new SimilarityFieldComparator(new LevenshteinSimilarity(), new SimilarityBands());
     }
 
     /**
-     * Four fields spanning two cost tiers: {@code firstName}/{@code
-     * lastName} at the default {@link CostTiers#CHEAP}, {@code dateOfBirth}
-     * at {@link CostTiers#MODERATE}, {@code address} at {@link
-     * CostTiers#EXPENSIVE}. {@code address} uses the asymmetric overload —
-     * {@link ExternalPerson#getAddress()} returns {@code List<String>},
-     * {@link Owner#getAddress()} returns a single {@code String}.
+     * Four fields spanning two cost tiers: {@code label}/{@code
+     * serial} at the default {@link CostTiers#CHEAP}, {@code issuedOn}
+     * at {@link CostTiers#MODERATE}, {@code locator} at {@link
+     * CostTiers#EXPENSIVE}. {@code locator} uses the asymmetric overload —
+     * {@link IncomingRecord#getLocator()} returns {@code List<String>},
+     * {@link StoredRecord#getLocator()} returns a single {@code String}.
      *
-     * @param addressCandidateExtractor lets a test observe or replace how the
-     *     candidate-side address is read, without duplicating the rest of
+     * @param locatorCandidateExtractor lets a test observe or replace how the
+     *     candidate-side locator is read, without duplicating the rest of
      *     the field configuration
      */
-    private static EntityResolverBuilder<ExternalPerson, Owner> builder(
-            Function<Owner, String> addressCandidateExtractor) {
-        return EntityResolverBuilder.<ExternalPerson, Owner>builder()
-                .field("firstName", ExternalPerson::getFirstName, Owner::getFirstName, firstNamePipeline())
-                .field("lastName", ExternalPerson::getLastName, Owner::getLastName, lastNamePipeline())
-                .field("dateOfBirth", ExternalPerson::getDateOfBirth, Owner::getDateOfBirth, dateOfBirthPipeline())
-                .cost("dateOfBirth", CostTiers.MODERATE)
-                .field("address", ExternalPerson::getAddress, addressCandidateExtractor,
-                        EndToEndResolutionTest::normalizeAddressLines, EndToEndResolutionTest::normalizeAddressLine,
-                        addressComparator())
-                .cost("address", CostTiers.EXPENSIVE);
+    private static EntityResolverBuilder<IncomingRecord, StoredRecord> builder(
+            Function<StoredRecord, String> locatorCandidateExtractor) {
+        return EntityResolverBuilder.<IncomingRecord, StoredRecord>builder()
+                .field("label", IncomingRecord::getLabel, StoredRecord::getLabel, labelPipeline())
+                .field("serial", IncomingRecord::getSerial, StoredRecord::getSerial, serialPipeline())
+                .field("issuedOn", IncomingRecord::getIssuedOn, StoredRecord::getIssuedOn, issuedOnPipeline())
+                .cost("issuedOn", CostTiers.MODERATE)
+                .field("locator", IncomingRecord::getLocator, locatorCandidateExtractor,
+                        EndToEndResolutionTest::normalizeLocatorLines, EndToEndResolutionTest::normalizeLocatorLine,
+                        locatorComparator())
+                .cost("locator", CostTiers.EXPENSIVE);
     }
 
-    private static EntityResolverBuilder<ExternalPerson, Owner> builder() {
-        return builder(Owner::getAddress);
+    private static EntityResolverBuilder<IncomingRecord, StoredRecord> builder() {
+        return builder(StoredRecord::getLocator);
     }
 
     /** Hand-chosen POINTS weights; every category any comparator above can emit is configured explicitly. */
     private static RuleBasedScorer scorer() {
         return RuleBasedScorer.builder()
-                .weight("firstName", ComparisonCategory.EXACT, 35.0)
-                .weight("firstName", ComparisonCategory.VERY_HIGH, 30.0)
-                .weight("firstName", ComparisonCategory.HIGH, 20.0)
-                .weight("firstName", ComparisonCategory.MEDIUM, 10.0)
-                .weight("firstName", ComparisonCategory.LOW, -5.0)
-                .weight("firstName", ComparisonCategory.MISSING_ONE, 0.0)
-                .weight("firstName", ComparisonCategory.MISSING_BOTH, 0.0)
-                .weight("lastName", ComparisonCategory.EXACT, 30.0)
-                .weight("lastName", ComparisonCategory.CONFLICT, -30.0)
-                .weight("lastName", ComparisonCategory.MISSING_ONE, 0.0)
-                .weight("lastName", ComparisonCategory.MISSING_BOTH, 0.0)
-                .weight("dateOfBirth", ComparisonCategory.EXACT, 25.0)
-                .weight("dateOfBirth", ComparisonCategory.CONFLICT, -100.0)
-                .weight("dateOfBirth", ComparisonCategory.MISSING_ONE, -5.0)
-                .weight("dateOfBirth", ComparisonCategory.MISSING_BOTH, 0.0)
-                .weight("address", ComparisonCategory.EXACT, 40.0)
-                .weight("address", ComparisonCategory.VERY_HIGH, 35.0)
-                .weight("address", ComparisonCategory.HIGH, 20.0)
-                .weight("address", ComparisonCategory.MEDIUM, 15.0)
-                .weight("address", ComparisonCategory.LOW, -5.0)
-                .weight("address", ComparisonCategory.MISSING_ONE, 0.0)
-                .weight("address", ComparisonCategory.MISSING_BOTH, 0.0)
+                .weight("label", ComparisonCategory.EXACT, 35.0)
+                .weight("label", ComparisonCategory.VERY_HIGH, 30.0)
+                .weight("label", ComparisonCategory.HIGH, 20.0)
+                .weight("label", ComparisonCategory.MEDIUM, 10.0)
+                .weight("label", ComparisonCategory.LOW, -5.0)
+                .weight("label", ComparisonCategory.MISSING_ONE, 0.0)
+                .weight("label", ComparisonCategory.MISSING_BOTH, 0.0)
+                .weight("serial", ComparisonCategory.EXACT, 30.0)
+                .weight("serial", ComparisonCategory.CONFLICT, -30.0)
+                .weight("serial", ComparisonCategory.MISSING_ONE, 0.0)
+                .weight("serial", ComparisonCategory.MISSING_BOTH, 0.0)
+                .weight("issuedOn", ComparisonCategory.EXACT, 25.0)
+                .weight("issuedOn", ComparisonCategory.CONFLICT, -100.0)
+                .weight("issuedOn", ComparisonCategory.MISSING_ONE, -5.0)
+                .weight("issuedOn", ComparisonCategory.MISSING_BOTH, 0.0)
+                .weight("locator", ComparisonCategory.EXACT, 40.0)
+                .weight("locator", ComparisonCategory.VERY_HIGH, 35.0)
+                .weight("locator", ComparisonCategory.HIGH, 20.0)
+                .weight("locator", ComparisonCategory.MEDIUM, 15.0)
+                .weight("locator", ComparisonCategory.LOW, -5.0)
+                .weight("locator", ComparisonCategory.MISSING_ONE, 0.0)
+                .weight("locator", ComparisonCategory.MISSING_BOTH, 0.0)
                 .baseScore(0.0)
                 .build();
     }
@@ -211,7 +211,7 @@ class EndToEndResolutionTest {
      * {@link #separatelyConstructedButEqualThresholdsStillBuild()} cover the
      * three cases directly.
      */
-    private static EntityResolver<ExternalPerson, Owner> resolverWith(EntityResolverBuilder<ExternalPerson, Owner> partial) {
+    private static EntityResolver<IncomingRecord, StoredRecord> resolverWith(EntityResolverBuilder<IncomingRecord, StoredRecord> partial) {
         DecisionThresholds sharedThresholds = thresholds();
         return partial
                 .scorer(scorer())
@@ -220,9 +220,9 @@ class EndToEndResolutionTest {
                 .build();
     }
 
-    private static List<Owner> rankedCandidates(MatchResult<Owner> result) {
-        List<Owner> ranked = new ArrayList<>();
-        for (ScoredCandidate<Owner> scored : result.getCandidates()) {
+    private static List<StoredRecord> rankedCandidates(MatchResult<StoredRecord> result) {
+        List<StoredRecord> ranked = new ArrayList<>();
+        for (ScoredCandidate<StoredRecord> scored : result.getCandidates()) {
             ranked.add(scored.getCandidate());
         }
         return ranked;
@@ -237,40 +237,40 @@ class EndToEndResolutionTest {
     // non-breaking space) docs/conventions.md#tests requires an escape for.
     // The curly apostrophe (U+2019) deliberately differs from the straight
     // one (U+0027) used elsewhere, so ApostropheVariantNormalizer folding
-    // them together is what lastName's EXACT category below depends on.
+    // them together is what serial's EXACT category below depends on.
 
-    private static ExternalPerson positiveSource() {
-        return new ExternalPerson("Seán", "O'Sullivan", LocalDate.of(1985, 6, 14),
+    private static IncomingRecord positiveSource() {
+        return new IncomingRecord("Seán", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 Arrays.asList("12 Main Street", "Dublin 4"));
     }
 
     @Test
     void positiveScenarioMatchesTheBestScoringCandidate() {
-        ExternalPerson source = positiveSource();
+        IncomingRecord source = positiveSource();
         // Curly apostrophe (U+2019) on the candidate side; ApostropheVariantNormalizer
         // folds it to the canonical U+0027 the source already uses.
-        Owner strongCandidate = new Owner("owner-1", "John", "O’Sullivan", LocalDate.of(1985, 6, 14),
+        StoredRecord strongCandidate = new StoredRecord("stored-1", "John", "O’Sullivan", LocalDate.of(1985, 6, 14),
                 "12 Main St. Dublin 4");
-        Owner distractor = new Owner("owner-2", "Michael", "Byrne", LocalDate.of(1960, 1, 1), "9 Other Road");
+        StoredRecord distractor = new StoredRecord("stored-2", "Michael", "Byrne", LocalDate.of(1960, 1, 1), "9 Other Road");
 
-        EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
-        MatchResult<Owner> result = resolver.resolve(source, Arrays.asList(distractor, strongCandidate));
+        EntityResolver<IncomingRecord, StoredRecord> resolver = resolverWith(builder());
+        MatchResult<StoredRecord> result = resolver.resolve(source, Arrays.asList(distractor, strongCandidate));
 
-        // firstName: "sean" vs "john" (4 chars each) — Levenshtein edit
+        // label: "sean" vs "john" (4 chars each) — Levenshtein edit
         // distance is 3 (three substitutions, "n" already matches), so
         // similarity = 1 - 3/4 = 0.25, below the 0.70 MEDIUM floor -> LOW (-5).
         // §88 expects this pair to resolve as ALIAS; there is no alias
         // repository (D7) in the merged code, so it falls through to a plain
         // string-similarity band instead.
-        // lastName: both normalize to "o'sullivan" -> EXACT (30).
-        // dateOfBirth: both 1985-06-14 -> EXACT (25).
-        // address: normalized source "12 main street dublin 4" (23 chars),
+        // serial: both normalize to "o'sullivan" -> EXACT (30).
+        // issuedOn: both 1985-06-14 -> EXACT (25).
+        // locator: normalized source "12 main street dublin 4" (23 chars),
         // normalized candidate "12 main st dublin 4" (19 chars); deleting
         // "reet" from "street" turns one into the other, so distance = 4 and
         // similarity = 1 - 4/23 = 19/23 ~= 0.826, in [0.70, 0.85) -> MEDIUM (15).
-        // §88 expects VERY_HIGH here; there is no address comparison pipeline
+        // §88 expects VERY_HIGH here; there is no locator comparison pipeline
         // (D9) in the merged code, so this is plain Levenshtein similarity on
-        // normalized strings, not the address-aware match §88 illustrates.
+        // normalized strings, not the locator-aware match §88 illustrates.
         // total = -5 + 30 + 25 + 15 = 65
         assertThat(result.getDecision()).isEqualTo(Decision.MATCH);
         assertThat(result.getMatch()).isSameAs(strongCandidate);
@@ -280,23 +280,23 @@ class EndToEndResolutionTest {
 
         // Pin each field's category individually, not only the total: a
         // future change that shifts two bands in opposite directions (e.g.
-        // firstName up a band and address down a band) could leave the total
+        // label up a band and locator down a band) could leave the total
         // unchanged and pass silently without this.
         List<FieldContribution> contributions = result.getCandidates().get(0).getContributions();
         assertThat(contributions)
-                .filteredOn(c -> "firstName".equals(c.getField()))
+                .filteredOn(c -> "label".equals(c.getField()))
                 .extracting(FieldContribution::getCategory)
                 .containsExactly(ComparisonCategory.LOW);
         assertThat(contributions)
-                .filteredOn(c -> "lastName".equals(c.getField()))
+                .filteredOn(c -> "serial".equals(c.getField()))
                 .extracting(FieldContribution::getCategory)
                 .containsExactly(ComparisonCategory.EXACT);
         assertThat(contributions)
-                .filteredOn(c -> "dateOfBirth".equals(c.getField()))
+                .filteredOn(c -> "issuedOn".equals(c.getField()))
                 .extracting(FieldContribution::getCategory)
                 .containsExactly(ComparisonCategory.EXACT);
         assertThat(contributions)
-                .filteredOn(c -> "address".equals(c.getField()))
+                .filteredOn(c -> "locator".equals(c.getField()))
                 .extracting(FieldContribution::getCategory)
                 .containsExactly(ComparisonCategory.MEDIUM);
 
@@ -307,27 +307,27 @@ class EndToEndResolutionTest {
         assertThat(contributions)
                 .extracting(FieldContribution::getField, FieldContribution::getContribution)
                 .containsExactlyInAnyOrder(
-                        org.assertj.core.api.Assertions.tuple("firstName", -5.0),
-                        org.assertj.core.api.Assertions.tuple("lastName", 30.0),
-                        org.assertj.core.api.Assertions.tuple("dateOfBirth", 25.0),
-                        org.assertj.core.api.Assertions.tuple("address", 15.0));
+                        org.assertj.core.api.Assertions.tuple("label", -5.0),
+                        org.assertj.core.api.Assertions.tuple("serial", 30.0),
+                        org.assertj.core.api.Assertions.tuple("issuedOn", 25.0),
+                        org.assertj.core.api.Assertions.tuple("locator", 15.0));
     }
 
     @Test
     void negativeScenarioIsNoMatchWithNoCandidateSelected() {
-        ExternalPerson source = new ExternalPerson("Seán", "O'Sullivan", LocalDate.of(1985, 6, 14),
+        IncomingRecord source = new IncomingRecord("Seán", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 Collections.singletonList("12 Main Street"));
-        Owner wrongDateOfBirth = new Owner("owner-3", "John", "O'Sullivan", LocalDate.of(1974, 2, 10),
+        StoredRecord wrongIssuedOn = new StoredRecord("stored-3", "John", "O'Sullivan", LocalDate.of(1974, 2, 10),
                 "12 Main Street");
 
-        EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
-        MatchResult<Owner> result = resolver.resolve(source, Arrays.asList(wrongDateOfBirth));
+        EntityResolver<IncomingRecord, StoredRecord> resolver = resolverWith(builder());
+        MatchResult<StoredRecord> result = resolver.resolve(source, Arrays.asList(wrongIssuedOn));
 
-        // firstName: LOW (-5), as in the positive scenario.
-        // lastName: both "o'sullivan" -> EXACT (30).
-        // dateOfBirth: 1985-06-14 vs 1974-02-10 -> CONFLICT (-100), strong
+        // label: LOW (-5), as in the positive scenario.
+        // serial: both "o'sullivan" -> EXACT (30).
+        // issuedOn: 1985-06-14 vs 1974-02-10 -> CONFLICT (-100), strong
         // negative evidence per the worked example's requirement.
-        // address: both normalize to "12 main street" -> EXACT (40).
+        // locator: both normalize to "12 main street" -> EXACT (40).
         // total = -5 + 30 - 100 + 40 = -35, below reviewThreshold (20) -> NO_MATCH
         assertThat(result.getDecision()).isEqualTo(Decision.NO_MATCH);
         assertThat(result.getMatch()).isNull();
@@ -336,25 +336,25 @@ class EndToEndResolutionTest {
 
     @Test
     void ambiguousScenarioReturnsReviewOnAMarginBelowTheMinimum() {
-        // D9: reproduced as a small margin rather than address subsumption —
+        // D9: reproduced as a small margin rather than locator subsumption —
         // this milestone has no subsumption signal. "Dublin 4" and "Dublin 8"
         // are symmetric single-token extensions of the source's "Dublin", so
         // they land in the same similarity band and tie exactly.
-        ExternalPerson source = new ExternalPerson("John", "Murphy", LocalDate.of(1985, 6, 14),
+        IncomingRecord source = new IncomingRecord("John", "Murphy", LocalDate.of(1985, 6, 14),
                 Collections.singletonList("Dublin"));
-        Owner ownerA = new Owner("owner-a", "John", "Murphy", LocalDate.of(1985, 6, 14), "Dublin 4");
-        Owner ownerB = new Owner("owner-b", "John", "Murphy", LocalDate.of(1985, 6, 14), "Dublin 8");
+        StoredRecord storedA = new StoredRecord("stored-a", "John", "Murphy", LocalDate.of(1985, 6, 14), "Dublin 4");
+        StoredRecord storedB = new StoredRecord("stored-b", "John", "Murphy", LocalDate.of(1985, 6, 14), "Dublin 8");
 
-        EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
-        MatchResult<Owner> result = resolver.resolve(source, Arrays.asList(ownerA, ownerB));
+        EntityResolver<IncomingRecord, StoredRecord> resolver = resolverWith(builder());
+        MatchResult<StoredRecord> result = resolver.resolve(source, Arrays.asList(storedA, storedB));
 
-        // firstName, lastName, dateOfBirth all agree exactly for both owners:
+        // label, serial, issuedOn all agree exactly for both storeds:
         // EXACT + EXACT + EXACT = 35 + 30 + 25 = 90 for each.
-        // address: normalized source "dublin" (6 chars) is a prefix of both
+        // locator: normalized source "dublin" (6 chars) is a prefix of both
         // normalized candidates "dublin 4" and "dublin 8" (8 chars each), so
         // the edit distance is exactly the length difference, 2, for both;
         // similarity = 1 - 2/8 = 0.75, in [0.70, 0.85) -> MEDIUM (15) for both.
-        // total = 90 + 15 = 105 for both owners -> margin = 0.0
+        // total = 90 + 15 = 105 for both storeds -> margin = 0.0
         assertThat(result.getDecision()).isEqualTo(Decision.REVIEW);
         assertThat(result.getMatch()).isNull();
         assertThat(result.hasSecondBest()).isTrue();
@@ -367,25 +367,25 @@ class EndToEndResolutionTest {
     void ambiguousScenarioReturnsReviewOnASmallNonZeroMarginBelowTheMinimum() {
         // A companion to the exact 0.0 tie above: margin here is a small
         // positive value still below minimumMargin (10.0), exercising the
-        // comparison as D9's address pipeline will eventually produce rather
+        // comparison as D9's locator pipeline will eventually produce rather
         // than only the degenerate exact-tie case.
-        ExternalPerson source = new ExternalPerson("John", "Murphy", LocalDate.of(1985, 6, 14),
+        IncomingRecord source = new IncomingRecord("John", "Murphy", LocalDate.of(1985, 6, 14),
                 Collections.singletonList("abcdefghij"));
-        // ownerHigh differs from the source address in one character
+        // storedHigh differs from the source locator in one character
         // (position 9, "i" -> "k") — same length, one substitution, so
         // distance = 1, similarity = 1 - 1/10 = 0.9, in [0.85, 0.95) -> HIGH (20).
-        Owner ownerHigh = new Owner("owner-high", "John", "Murphy", LocalDate.of(1985, 6, 14), "abcdefghik");
-        // ownerMedium differs in two characters (positions 9 and 10,
+        StoredRecord storedHigh = new StoredRecord("stored-high", "John", "Murphy", LocalDate.of(1985, 6, 14), "abcdefghik");
+        // storedMedium differs in two characters (positions 9 and 10,
         // "ij" -> "kl") — same length, two substitutions, so distance = 2,
         // similarity = 1 - 2/10 = 0.8, in [0.70, 0.85) -> MEDIUM (15).
-        Owner ownerMedium = new Owner("owner-medium", "John", "Murphy", LocalDate.of(1985, 6, 14), "abcdefghkl");
+        StoredRecord storedMedium = new StoredRecord("stored-medium", "John", "Murphy", LocalDate.of(1985, 6, 14), "abcdefghkl");
 
-        EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
-        MatchResult<Owner> result = resolver.resolve(source, Arrays.asList(ownerHigh, ownerMedium));
+        EntityResolver<IncomingRecord, StoredRecord> resolver = resolverWith(builder());
+        MatchResult<StoredRecord> result = resolver.resolve(source, Arrays.asList(storedHigh, storedMedium));
 
-        // firstName, lastName, dateOfBirth all agree exactly for both owners:
+        // label, serial, issuedOn all agree exactly for both storeds:
         // EXACT + EXACT + EXACT = 35 + 30 + 25 = 90 for each.
-        // ownerHigh total = 90 + 20 = 110. ownerMedium total = 90 + 15 = 105.
+        // storedHigh total = 90 + 20 = 110. storedMedium total = 90 + 15 = 105.
         // Both clear matchThreshold (50); margin = 110 - 105 = 5.0, below
         // minimumMargin (10.0) -> REVIEW.
         assertThat(result.getDecision()).isEqualTo(Decision.REVIEW);
@@ -398,26 +398,26 @@ class EndToEndResolutionTest {
 
     @Test
     void missingValueOnOneSideIsMissingOneNotConflict() {
-        ExternalPerson source = new ExternalPerson("Seán", "O'Sullivan", LocalDate.of(1985, 6, 14),
+        IncomingRecord source = new IncomingRecord("Seán", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 Collections.singletonList("12 Main Street"));
-        // The owner record has no first name on file.
-        Owner candidate = new Owner("owner-4", null, "O'Sullivan", LocalDate.of(1985, 6, 14), "12 Main Street");
+        // The stored record has no first name on file.
+        StoredRecord candidate = new StoredRecord("stored-4", null, "O'Sullivan", LocalDate.of(1985, 6, 14), "12 Main Street");
 
-        EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
-        MatchResult<Owner> result = resolver.resolve(source, Arrays.asList(candidate));
+        EntityResolver<IncomingRecord, StoredRecord> resolver = resolverWith(builder());
+        MatchResult<StoredRecord> result = resolver.resolve(source, Arrays.asList(candidate));
 
-        FieldContribution firstNameContribution = null;
+        FieldContribution labelContribution = null;
         for (FieldContribution contribution : result.getCandidates().get(0).getContributions()) {
-            if ("firstName".equals(contribution.getField())) {
-                firstNameContribution = contribution;
+            if ("label".equals(contribution.getField())) {
+                labelContribution = contribution;
             }
         }
 
-        assertThat(firstNameContribution).isNotNull();
-        assertThat(firstNameContribution.getCategory()).isEqualTo(ComparisonCategory.MISSING_ONE);
+        assertThat(labelContribution).isNotNull();
+        assertThat(labelContribution.getCategory()).isEqualTo(ComparisonCategory.MISSING_ONE);
 
-        // firstName: MISSING_ONE (0). lastName: EXACT (30). dateOfBirth:
-        // EXACT (25). address: both normalize to "12 main street" -> EXACT (40).
+        // label: MISSING_ONE (0). serial: EXACT (30). issuedOn:
+        // EXACT (25). locator: both normalize to "12 main street" -> EXACT (40).
         // total = 0 + 30 + 25 + 40 = 95
         assertThat(result.getDecision()).isEqualTo(Decision.MATCH);
         assertThat(result.getScore().getValue()).isEqualTo(95.0);
@@ -425,45 +425,45 @@ class EndToEndResolutionTest {
 
     @Test
     void ruleVetoingOnAConflictingCheapFieldNeverInvokesTheExpensiveFieldPreparer() {
-        Set<Owner> addressInvocations = new HashSet<>();
-        Function<Owner, String> countingAddressExtractor = owner -> {
-            addressInvocations.add(owner);
-            return owner.getAddress();
+        Set<StoredRecord> locatorInvocations = new HashSet<>();
+        Function<StoredRecord, String> countingLocatorExtractor = stored -> {
+            locatorInvocations.add(stored);
+            return stored.getLocator();
         };
 
-        CandidateRule<ExternalPerson, Owner> rejectOnConflictingLastName = (source, candidate, evidence) -> {
-            FieldEvidence lastNameEvidence = evidence.getField("lastName");
-            return lastNameEvidence != null && lastNameEvidence.getCategory() == ComparisonCategory.CONFLICT
+        CandidateRule<IncomingRecord, StoredRecord> rejectOnConflictingSerial = (source, candidate, evidence) -> {
+            FieldEvidence serialEvidence = evidence.getField("serial");
+            return serialEvidence != null && serialEvidence.getCategory() == ComparisonCategory.CONFLICT
                     ? RuleDecision.REJECT
                     : RuleDecision.CONTINUE;
         };
 
-        ExternalPerson source = positiveSource();
-        Owner surviving = new Owner("owner-5", "John", "O'Sullivan", LocalDate.of(1985, 6, 14), "12 Main St. Dublin 4");
-        // lastName is CHEAP-tier and conflicts, so the rule rejects this
-        // candidate before dateOfBirth (MODERATE) or address (EXPENSIVE) run.
-        Owner vetoed = new Owner("owner-6", "John", "Murphy", LocalDate.of(1985, 6, 14), "12 Main St. Dublin 4");
+        IncomingRecord source = positiveSource();
+        StoredRecord surviving = new StoredRecord("stored-5", "John", "O'Sullivan", LocalDate.of(1985, 6, 14), "12 Main St. Dublin 4");
+        // serial is CHEAP-tier and conflicts, so the rule rejects this
+        // candidate before issuedOn (MODERATE) or locator (EXPENSIVE) run.
+        StoredRecord vetoed = new StoredRecord("stored-6", "John", "Murphy", LocalDate.of(1985, 6, 14), "12 Main St. Dublin 4");
 
-        EntityResolver<ExternalPerson, Owner> resolver =
-                resolverWith(builder(countingAddressExtractor).rule(rejectOnConflictingLastName));
-        MatchResult<Owner> result = resolver.resolve(source, Arrays.asList(surviving, vetoed));
+        EntityResolver<IncomingRecord, StoredRecord> resolver =
+                resolverWith(builder(countingLocatorExtractor).rule(rejectOnConflictingSerial));
+        MatchResult<StoredRecord> result = resolver.resolve(source, Arrays.asList(surviving, vetoed));
 
         assertThat(rankedCandidates(result)).containsExactly(surviving);
         assertThat(rankedCandidates(result)).doesNotContain(vetoed);
         // Proves the spy is actually wired (non-vacuous): it fires for the
         // surviving candidate, which does reach the EXPENSIVE tier.
-        assertThat(addressInvocations).contains(surviving);
-        assertThat(addressInvocations).doesNotContain(vetoed);
+        assertThat(locatorInvocations).contains(surviving);
+        assertThat(locatorInvocations).doesNotContain(vetoed);
     }
 
     @Test
     void repeatedResolvesAgreeOnDecisionScoreAndOrdering() {
-        EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
-        ExternalPerson source = positiveSource();
-        Owner candidate = new Owner("owner-7", "John", "O'Sullivan", LocalDate.of(1985, 6, 14), "12 Main St. Dublin 4");
+        EntityResolver<IncomingRecord, StoredRecord> resolver = resolverWith(builder());
+        IncomingRecord source = positiveSource();
+        StoredRecord candidate = new StoredRecord("stored-7", "John", "O'Sullivan", LocalDate.of(1985, 6, 14), "12 Main St. Dublin 4");
 
-        MatchResult<Owner> first = resolver.resolve(source, Arrays.asList(candidate));
-        MatchResult<Owner> second = resolver.resolve(source, Arrays.asList(candidate));
+        MatchResult<StoredRecord> first = resolver.resolve(source, Arrays.asList(candidate));
+        MatchResult<StoredRecord> second = resolver.resolve(source, Arrays.asList(candidate));
 
         assertThat(second.getDecision()).isEqualTo(first.getDecision());
         assertThat(second.getScore().getValue()).isEqualTo(first.getScore().getValue());
@@ -478,49 +478,49 @@ class EndToEndResolutionTest {
      */
     @Test
     void resolveIsDeterministicAcrossShuffledCandidateOrder() {
-        ExternalPerson source = positiveSource();
+        IncomingRecord source = positiveSource();
 
-        // Four owners with widely separated, hand-verified total scores so no
+        // Four storeds with widely separated, hand-verified total scores so no
         // two can tie by accident and the ordering assertion is meaningful.
         //
-        // ownerBest: firstName LOW (-5) + lastName EXACT (30) + dateOfBirth
-        // EXACT (25) + address MEDIUM (15) = 65 (identical construction to
+        // storedBest: label LOW (-5) + serial EXACT (30) + issuedOn
+        // EXACT (25) + locator MEDIUM (15) = 65 (identical construction to
         // the positive scenario above).
-        Owner ownerBest = new Owner("owner-best", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+        StoredRecord storedBest = new StoredRecord("stored-best", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 "12 Main St. Dublin 4");
-        // ownerMid: firstName LOW (-5) + lastName CONFLICT (-30) + dateOfBirth
-        // EXACT (25) + address EXACT (40, both normalize to
+        // storedMid: label LOW (-5) + serial CONFLICT (-30) + issuedOn
+        // EXACT (25) + locator EXACT (40, both normalize to
         // "12 main street dublin 4") = 30.
-        Owner ownerMid = new Owner("owner-mid", "John", "Murphy", LocalDate.of(1985, 6, 14),
+        StoredRecord storedMid = new StoredRecord("stored-mid", "John", "Murphy", LocalDate.of(1985, 6, 14),
                 "12 Main Street Dublin 4");
-        // ownerLow: firstName EXACT (35, matches source exactly) + lastName
-        // CONFLICT (-30) + dateOfBirth MISSING_ONE (-5, candidate has none) +
-        // address MEDIUM (15) = 15.
-        Owner ownerLow = new Owner("owner-low", "Seán", "Murphy", null, "12 Main St. Dublin 4");
-        // ownerWorst: firstName LOW (-5) + lastName CONFLICT (-30) +
-        // dateOfBirth CONFLICT (-100) + address LOW (-5): normalized source
+        // storedLow: label EXACT (35, matches source exactly) + serial
+        // CONFLICT (-30) + issuedOn MISSING_ONE (-5, candidate has none) +
+        // locator MEDIUM (15) = 15.
+        StoredRecord storedLow = new StoredRecord("stored-low", "Seán", "Murphy", null, "12 Main St. Dublin 4");
+        // storedWorst: label LOW (-5) + serial CONFLICT (-30) +
+        // issuedOn CONFLICT (-100) + locator LOW (-5): normalized source
         // is 23 characters and normalized candidate "9 random lane" is 13,
         // so the edit distance is at least |23-13| = 10 regardless of
         // content, giving similarity <= 1 - 10/23 = 13/23 ~= 0.565 < 0.70,
         // guaranteeing LOW without computing the exact distance.
         // total = -5 - 30 - 100 - 5 = -140
-        Owner ownerWorst = new Owner("owner-worst", "John", "Murphy", LocalDate.of(1974, 2, 10), "9 Random Lane");
+        StoredRecord storedWorst = new StoredRecord("stored-worst", "John", "Murphy", LocalDate.of(1974, 2, 10), "9 Random Lane");
 
-        List<Owner> candidates = Arrays.asList(ownerBest, ownerMid, ownerLow, ownerWorst);
-        EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
+        List<StoredRecord> candidates = Arrays.asList(storedBest, storedMid, storedLow, storedWorst);
+        EntityResolver<IncomingRecord, StoredRecord> resolver = resolverWith(builder());
 
-        MatchResult<Owner> baseline = resolver.resolve(source, candidates);
+        MatchResult<StoredRecord> baseline = resolver.resolve(source, candidates);
         assertThat(baseline.getDecision()).isEqualTo(Decision.MATCH);
-        assertThat(baseline.getMatch()).isSameAs(ownerBest);
-        List<Owner> baselineOrder = rankedCandidates(baseline);
-        assertThat(baselineOrder).containsExactly(ownerBest, ownerMid, ownerLow, ownerWorst);
+        assertThat(baseline.getMatch()).isSameAs(storedBest);
+        List<StoredRecord> baselineOrder = rankedCandidates(baseline);
+        assertThat(baselineOrder).containsExactly(storedBest, storedMid, storedLow, storedWorst);
 
         Random random = new Random(42);
         for (int shuffle = 0; shuffle < 20; shuffle++) {
-            List<Owner> shuffled = new ArrayList<>(candidates);
+            List<StoredRecord> shuffled = new ArrayList<>(candidates);
             Collections.shuffle(shuffled, random);
 
-            MatchResult<Owner> result = resolver.resolve(source, shuffled);
+            MatchResult<StoredRecord> result = resolver.resolve(source, shuffled);
 
             assertThat(result.getDecision()).isEqualTo(baseline.getDecision());
             assertThat(result.getMatch()).isSameAs(baseline.getMatch());
@@ -547,27 +547,27 @@ class EndToEndResolutionTest {
      */
     @Test
     void tiedCandidatesKeepTheirInputOrderUnderTheStableSort() {
-        ExternalPerson source = positiveSource();
+        IncomingRecord source = positiveSource();
         // All four are constructed identically on every field the scorer
-        // sees, so each scores firstName LOW (-5) + lastName EXACT (30) +
-        // dateOfBirth EXACT (25) + address MEDIUM (15) = 65, an exact tie.
-        Owner tiedOne = new Owner("owner-tied-1", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+        // sees, so each scores label LOW (-5) + serial EXACT (30) +
+        // issuedOn EXACT (25) + locator MEDIUM (15) = 65, an exact tie.
+        StoredRecord tiedOne = new StoredRecord("stored-tied-1", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 "12 Main St. Dublin 4");
-        Owner tiedTwo = new Owner("owner-tied-2", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+        StoredRecord tiedTwo = new StoredRecord("stored-tied-2", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 "12 Main St. Dublin 4");
-        Owner tiedThree = new Owner("owner-tied-3", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+        StoredRecord tiedThree = new StoredRecord("stored-tied-3", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 "12 Main St. Dublin 4");
-        Owner tiedFour = new Owner("owner-tied-4", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+        StoredRecord tiedFour = new StoredRecord("stored-tied-4", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
                 "12 Main St. Dublin 4");
 
-        EntityResolver<ExternalPerson, Owner> resolver = resolverWith(builder());
+        EntityResolver<IncomingRecord, StoredRecord> resolver = resolverWith(builder());
 
-        MatchResult<Owner> firstOrder =
+        MatchResult<StoredRecord> firstOrder =
                 resolver.resolve(source, Arrays.asList(tiedOne, tiedTwo, tiedThree, tiedFour));
         assertThat(rankedCandidates(firstOrder))
                 .containsExactly(tiedOne, tiedTwo, tiedThree, tiedFour);
 
-        MatchResult<Owner> reversedOrder =
+        MatchResult<StoredRecord> reversedOrder =
                 resolver.resolve(source, Arrays.asList(tiedFour, tiedThree, tiedTwo, tiedOne));
         assertThat(rankedCandidates(reversedOrder))
                 .containsExactly(tiedFour, tiedThree, tiedTwo, tiedOne);
@@ -585,18 +585,18 @@ class EndToEndResolutionTest {
     void followingTheSameInstanceThresholdsContractProducesTheDeclaredDecision() {
         DecisionThresholds sharedThresholds = new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS);
 
-        EntityResolver<ExternalPerson, Owner> resolver = builder()
+        EntityResolver<IncomingRecord, StoredRecord> resolver = builder()
                 .scorer(scorer())
                 .thresholds(sharedThresholds)
                 .decisionEngine(new ThresholdDecisionEngine<>(sharedThresholds))
                 .build();
 
-        ExternalPerson source = positiveSource();
-        Owner candidate = new Owner("owner-8", "John", "O'Sullivan", LocalDate.of(1985, 6, 14), "12 Main St. Dublin 4");
+        IncomingRecord source = positiveSource();
+        StoredRecord candidate = new StoredRecord("stored-8", "John", "O'Sullivan", LocalDate.of(1985, 6, 14), "12 Main St. Dublin 4");
 
         // Same arithmetic as the positive scenario: total = 65, which is
         // >= sharedThresholds.getMatchThreshold() (50) -> MATCH.
-        MatchResult<Owner> result = resolver.resolve(source, Arrays.asList(candidate));
+        MatchResult<StoredRecord> result = resolver.resolve(source, Arrays.asList(candidate));
 
         assertThat(result.getDecision()).isEqualTo(Decision.MATCH);
         assertThat(result.getMatch()).isSameAs(candidate);
@@ -667,15 +667,15 @@ class EndToEndResolutionTest {
      */
     @Test
     void separatelyConstructedButEqualThresholdsStillBuild() {
-        EntityResolver<ExternalPerson, Owner> resolver = builder()
+        EntityResolver<IncomingRecord, StoredRecord> resolver = builder()
                 .scorer(scorer())
                 .thresholds(new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS))
                 .decisionEngine(new ThresholdDecisionEngine<>(
                         new DecisionThresholds(50.0, 20.0, 10.0, ScoreScale.POINTS)))
                 .build();
 
-        MatchResult<Owner> result = resolver.resolve(positiveSource(), Arrays.asList(
-                new Owner("owner-9", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
+        MatchResult<StoredRecord> result = resolver.resolve(positiveSource(), Arrays.asList(
+                new StoredRecord("stored-9", "John", "O'Sullivan", LocalDate.of(1985, 6, 14),
                         "12 Main St. Dublin 4")));
 
         assertThat(result.getDecision()).isEqualTo(Decision.MATCH);
