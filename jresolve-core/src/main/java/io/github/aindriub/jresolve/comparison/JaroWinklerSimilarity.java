@@ -34,6 +34,17 @@ public final class JaroWinklerSimilarity implements SimilarityMetric {
             throw new IllegalArgumentException(
                     "boostThreshold must be within [0, 1], was " + boostThreshold);
         }
+        // Checking the two independently is not enough. The boost adds
+        // prefixLength * prefixScale * (1 - jaro), so a product above 1 adds back
+        // more than the distance to 1.0 and the result leaves [0, 1] -- (0.25, 5)
+        // passes both checks above and scores 1.024 on a seven-character pair.
+        // Bounding the product is what makes this class's documented range true.
+        if (prefixScale * maxPrefixLength > 1.0) {
+            throw new IllegalArgumentException(
+                    "prefixScale * maxPrefixLength must not exceed 1, or a boosted score can "
+                            + "exceed 1.0; was " + prefixScale + " * " + maxPrefixLength
+                            + " = " + prefixScale * maxPrefixLength);
+        }
         this.prefixScale = prefixScale;
         this.maxPrefixLength = maxPrefixLength;
         this.boostThreshold = boostThreshold;

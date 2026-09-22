@@ -44,6 +44,52 @@ class JaroWinklerSimilarityTest {
         new JaroWinklerSimilarity(0.25, 4, 0.7);
     }
 
+    // (0.25, 5) satisfies both individual bounds and still scores above 1.0,
+    // which is why the product is checked rather than the two factors alone.
+    @Test
+    void constructorRejectsAPrefixBoostThatCanExceedOne() {
+        assertThatThrownBy(() -> new JaroWinklerSimilarity(0.25, 5, 0.7))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must not exceed 1");
+    }
+
+    @Test
+    void constructorAcceptsAPrefixBoostProductOfExactlyOne() {
+        assertThatCode(() -> new JaroWinklerSimilarity(0.25, 4, 0.7))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> new JaroWinklerSimilarity(0.1, 10, 0.7))
+                .doesNotThrowAnyException();
+    }
+
+    // The bound the class documents, over every combination the constructor
+    // still accepts. A score above 1.0 would misband in SimilarityBands and
+    // read as better than an exact match.
+    @Test
+    void everyAcceptedConfigurationStaysWithinZeroAndOne() {
+        double[] scales = {0.0, 0.05, 0.1, 0.2, 0.25};
+        int[] prefixLengths = {0, 1, 2, 3, 4, 8, 20};
+        String[] values = {"", "a", "ab", "MARTHA", "MARHTA", "DWAYNE", "DUANE",
+                "abcdefg", "abcdeXg", "aaaaaaaaaa", "aaaaaaaaab"};
+
+        for (double scale : scales) {
+            for (int prefixLength : prefixLengths) {
+                if (scale * prefixLength > 1.0) {
+                    continue;
+                }
+                JaroWinklerSimilarity configured =
+                        new JaroWinklerSimilarity(scale, prefixLength, 0.7);
+                for (String left : values) {
+                    for (String right : values) {
+                        assertThat(configured.similarity(left, right))
+                                .as("similarity(%s, %s) with scale %s and prefix %s",
+                                        left, right, scale, prefixLength)
+                                .isBetween(0.0, 1.0);
+                    }
+                }
+            }
+        }
+    }
+
     // MARTHA vs MARHTA, both length 6, match window = max(6,6)/2 - 1 = 2.
     // Walking the window finds matches M-M, A-A, R-R, T-H, H-T, A-A: 6 matches.
     // Comparing matched characters in index order surfaces two positions
