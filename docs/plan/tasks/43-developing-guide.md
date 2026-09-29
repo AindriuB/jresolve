@@ -60,3 +60,19 @@ verified against the pom and the tests. Two defects:
   - `:143`, `:161`: the quoted `:98` and `:53` line numbers come from broken
     builds and drift (`:53` is already `:52`). Say the line varies, or drop it.
 - Continue on branch `task/43-developing-guide`.
+
+## Attempt 2 — failed
+
+Review REQUEST CHANGES (commit 7df6dbe). The U+00A0, sanctioned-wording and
+line-number points are resolved. The main defect was not changed, though the
+commit body says it was.
+
+- **Vocabulary rule still contradicts conventions.md.** `DEVELOPING.md:68-69`
+  still says core may not name "a person, a name of any kind, …". 7df6dbe has no
+  hunk there. `docs/conventions.md:47-52` bans `name` only in its personal
+  sense (`firstName`, `surname`, …) and allows it as a field identifier
+  (`fieldName`, `FieldDefinition.getName()`). Rewrite lines 68-69 to say that,
+  and confirm with `git show HEAD:DEVELOPING.md | sed -n 66,70p` before claiming
+  it is fixed.
+- Also re-wrap `DEVELOPING.md:148`.
+- Continue on branch `task/43-developing-guide`.
