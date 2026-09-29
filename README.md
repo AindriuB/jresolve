@@ -37,20 +37,38 @@ of system fails on most often:
 <dependency>
   <groupId>io.github.aindriub</groupId>
   <artifactId>jresolve-core</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
 </dependency>
 ```
 
+Javadoc: [javadoc.io](https://javadoc.io/doc/io.github.aindriub/jresolve-core).
+Artifact: [Maven Central](https://central.sonatype.com/artifact/io.github.aindriub/jresolve-core).
+
 `jresolve-core` knows nothing about names, addresses or countries. Domain
-knowledge ships separately and is optional:
+knowledge lives in `jresolve-profiles-ie`, which is optional.
+
+**`jresolve-profiles-ie` is not published to Central in 0.1.0.** The release
+gate (D19) holds it back until a licensed alias corpus replaces the
+hand-written illustrative tables (task 28). To use it, build and install it
+from source:
+
+```
+git clone https://github.com/aindriub/jresolve.git
+cd jresolve
+mvn install
+```
+
+then depend on the version of your checkout:
 
 ```xml
 <dependency>
   <groupId>io.github.aindriub</groupId>
   <artifactId>jresolve-profiles-ie</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>${jresolve.version}</version>
 </dependency>
 ```
+
+where `jresolve.version` is the `<version>` in the root `pom.xml`.
 
 **Java 8 is a hard target**, enforced by animal-sniffer at build time. Building
 the project needs a JDK 17 toolchain; using it does not.
@@ -153,11 +171,15 @@ the score into a `ComparisonCategory`, and you weight the categories:
         .build())
 ```
 
-> **Weight `EXACT` on fuzzy fields too.** A similarity comparator returns
-> `EXACT` when the two values are equal *after* normalization — which is the
-> common case, since normalization exists to collapse differences. A config
-> that weights only the bands scores a perfect agreement as **zero**. This is
-> the single easiest mistake to make with this API.
+> **`EXACT` applies to fuzzy fields too.** A similarity comparator returns
+> `EXACT` when the two values are equal *after* normalization, which is the
+> common case, since normalization exists to collapse differences. A field that
+> weights a partial-agreement category (`VERY_HIGH`, `HIGH`, `MEDIUM`, `LOW`,
+> the alias categories, `SUBSUMED`, `PARTIAL_OVERLAP`) but has neither an
+> `EXACT` weight nor a `defaultWeight` would score a perfect agreement as
+> zero, so `RuleBasedScorer.Builder.build()` throws `IllegalArgumentException`
+> naming the field. Weighting `.weight(field, ComparisonCategory.EXACT, 0.0)`
+> is the explicit opt-out.
 
 So `"Widget  Co"` against `"widget co"` is `EXACT` (case and spacing
 normalized away), scoring 8 + 6 = 14. And `"Widgit Co"` against `"widget co"`
@@ -275,11 +297,12 @@ pipeline.compare(less, more).getSubsumption();  // LEFT_SUBSUMES_RIGHT
 pipeline.compare(less, more).getCategory();     // SUBSUMED, never CONFLICT
 ```
 
-`SUBSUMED` is not a constant on `ComparisonCategory`. Categories are an **open
-value type** — a comparator mints the ones it can produce, and owns them:
+`SUBSUMED` and `PARTIAL_OVERLAP` are constants on `ComparisonCategory`, so you
+weight them like any other category (`TokenSubsumptionComparator` re-exports
+them for convenience):
 
 ```java
-.weight("address", TokenSubsumptionComparator.SUBSUMED, 12.0)
+.weight("address", ComparisonCategory.SUBSUMED, 12.0)
 ```
 
 Put together, a resolver using both matches records an equality join cannot
@@ -401,6 +424,10 @@ measured the within-group correlation, leave it alone.
 | Why the design departs from the original spec | [docs/design-decisions.md](docs/design-decisions.md) |
 | Module boundaries and the type model | [docs/architecture.md](docs/architecture.md) |
 | What a score means, and what it does not | [docs/calibration.md](docs/calibration.md) |
+| To set thresholds and weights for your data | [docs/tuning.md](docs/tuning.md) |
+| To build, test and change the project | [DEVELOPING.md](DEVELOPING.md) |
+| To cut a release | [RELEASING.md](RELEASING.md) |
+| The API reference | [javadoc.io](https://javadoc.io/doc/io.github.aindriub/jresolve-core) |
 | What is still open | [docs/plan/PLAN.md](docs/plan/PLAN.md) |
 
 ## Building
@@ -409,10 +436,8 @@ measured the within-group correlation, leave it alone.
 mvn clean verify
 ```
 
-Needs a JDK 17 toolchain in `~/.m2/toolchains.xml` — see
-[docs/architecture.md](docs/architecture.md#building). The build enforces the
-Java 8 target with animal-sniffer, fails on a Javadoc reference that no longer
-resolves, and fails if `jresolve-core` names a domain concept.
+See [DEVELOPING.md](DEVELOPING.md) for the toolchain, the build gates and how
+to run the tests.
 
 ## Licence
 
