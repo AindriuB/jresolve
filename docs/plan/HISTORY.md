@@ -9,7 +9,7 @@ The README now shows `jresolve-core` 0.1.0, marks profiles-ie unpublished
 (D19, task 28) with a local-install recipe, and replaces both sharp-edge
 warnings with current behaviour. `docs/tuning.md` is new, and a review checked
 every technical claim in it against source. Main is at 662 tests
-(578 core + 81 profiles + 3), `BUILD SUCCESS`; tasks 40, 43 and 44 are on
+(581 core + 81 profiles), `BUILD SUCCESS`; tasks 40, 43 and 44 are on
 attempt 2.
 
 **Cost:** writing the tuning guide surfaced that an unscorable candidate (for
