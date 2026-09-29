@@ -30,8 +30,8 @@ public final class IrishNamePipeline {
     private IrishNamePipeline() {
     }
 
-    /** Uses the illustrative tables in {@link IrishNameAliases}. */
-    public static FieldPipeline<String, String> forGivenName() {
+    /** Serves given names and surnames alike, using the illustrative tables in {@link IrishNameAliases}. */
+    public static FieldPipeline<String, String> forNames() {
         return withAliases(IrishNameAliases.repository());
     }
 
