@@ -71,7 +71,8 @@ personal sense (`firstName`, `lastName`, `fullName`, `givenName`, `surname`);
 it is fine as a field identifier (`fieldName`, `FieldDefinition.getName()`).
 Not in identifiers, not in Javadoc, not in tests. A profile module exists so
 that the domain words have somewhere to live. See
-[docs/conventions.md](docs/conventions.md) for the full list. `DomainVocabularyTest` checks it, below.
+[docs/conventions.md](docs/conventions.md) for the full list.
+`DomainVocabularyTest` checks it, below.
 
 ## The build gates
 
