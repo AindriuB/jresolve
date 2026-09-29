@@ -8,9 +8,9 @@
  * log-likelihood-ratio weights from a
  * {@link io.github.aindriub.jresolve.scoring.FellegiSunterModel}
  * ({@link io.github.aindriub.jresolve.scoring.DefaultFellegiSunterModel}).
- * Model parameters can be estimated from
- * {@link io.github.aindriub.jresolve.scoring.LabelledMatchExample}s or
- * {@link io.github.aindriub.jresolve.scoring.UnlabelledMatchExample}s.
+ * {@link io.github.aindriub.jresolve.scoring.LabelledMatchExample}s and
+ * {@link io.github.aindriub.jresolve.scoring.UnlabelledMatchExample}s hold
+ * examples for estimating parameters outside the library; it does not train.
  *
  * <p>A similarity is not a probability, and a raw score is not one either. A
  * probability is only produced when the model carries prior odds, and nothing

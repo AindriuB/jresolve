@@ -5,7 +5,7 @@
  * (implemented by {@link io.github.aindriub.jresolve.evidence.DefaultFieldEvidence})
  * is one field's outcome: a
  * {@link io.github.aindriub.jresolve.evidence.ComparisonCategory}, a
- * similarity and any features. The per-field values are gathered into a
+ * similarity, a frequency key and a token subsumption. The per-field values are gathered into a
  * {@link io.github.aindriub.jresolve.evidence.MatchEvidence}, which scorers
  * consume.
  *
