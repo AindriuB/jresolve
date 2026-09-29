@@ -47,3 +47,22 @@ first, and `ComparisonCategory` carries the second.
 - Removing `TokenSubsumptionComparator.SUBSUMED`/`PARTIAL_OVERLAP`. They stay, as aliases of the same objects.
 - Any file in `jresolve-profiles-ie`.
 - `package-info.java` files (task 40).
+
+## Attempt 1 — failed
+
+Tests PASS (642 = 634 + 8); review REQUEST CHANGES on one criterion.
+
+- **Producer table is incomplete.** `ComparisonCategory.java:24-33`: the `EXACT`
+  row omits `TokenSubsumptionComparator` (returns `EXACT` at
+  `TokenSubsumptionComparator.java:115`) and the `CONFLICT` row names only
+  `ExactFieldComparator` (the subsumption comparator also returns `CONFLICT` at
+  `:126`). A scorer built from the table could leave `CONFLICT` unweighted.
+  Re-derive every row from the comparators' actual return sites.
+- Ruled acceptable, do not change: `IllegalArgumentException` (matches the
+  scoring package; aligning the package with `conventions.md#errors` is a
+  follow-up), and leaving `README.md` untouched (its copy of the cost-tiers
+  example never shows the changed scorer lines).
+- Optional tidy-ups while there: import `java.util.Arrays` at
+  `RuleBasedScorer.java:38`; one blank line, not two, before the new tests at
+  `ComparisonCategoryTest.java:101` and `TokenSubsumptionComparatorTest.java:273`.
+- Continue on branch `task/36-api-sharp-edges` (commit 9597f06); do not start over.
