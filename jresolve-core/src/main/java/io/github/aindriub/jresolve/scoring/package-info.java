@@ -13,8 +13,10 @@
  * examples for estimating parameters outside the library; it does not train.
  *
  * <p>A similarity is not a probability, and a raw score is not one either. A
- * probability is only produced when the model carries prior odds, and nothing
- * shipped here is calibrated: any figures depend on the parameters you
- * supply. See {@code docs/calibration.md} in the repository.
+ * {@link io.github.aindriub.jresolve.scoring.FellegiSunterScorer} only
+ * produces a probability when its
+ * {@link io.github.aindriub.jresolve.scoring.FellegiSunterModel} carries prior
+ * odds, and nothing shipped here is calibrated: any figures depend on the
+ * parameters you supply. See {@code docs/calibration.md} in the repository.
  */
 package io.github.aindriub.jresolve.scoring;
