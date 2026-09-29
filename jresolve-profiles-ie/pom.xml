@@ -19,6 +19,11 @@
   <url>https://github.com/AindriuB/jresolve</url>
   <packaging>jar</packaging>
 
+  <properties>
+    <!-- D19: "illustrative" until task 28 replaces the tables with a sourced corpus. -->
+    <jresolve.aliasCorpus>illustrative</jresolve.aliasCorpus>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>io.github.aindriub</groupId>
@@ -36,4 +41,37 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>enforce-alias-corpus-sourced</id>
+                <phase>validate</phase>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <configuration>
+                  <rules>
+                    <requireProperty>
+                      <property>jresolve.aliasCorpus</property>
+                      <regex>sourced</regex>
+                      <regexMessage>D19 release gate: jresolve-profiles-ie still ships illustrative alias tables (jresolve.aliasCorpus must be "sourced", see task 28). Do not release it. Release core only, with: mvn -Prelease -pl jresolve-core -am clean deploy</regexMessage>
+                    </requireProperty>
+                  </rules>
+                  <fail>true</fail>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

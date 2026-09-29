@@ -481,6 +481,11 @@ decided after milestone 4.
   not enough to ship. `IrishNameAliases` says so in its first Javadoc paragraph
   and keeps saying so until a sourced corpus replaces it. **No release until
   then** — this is the one answer here that gates publication.
+  *Amended 2026-09-29:* the gate binds `jresolve-profiles-ie`, because that
+  module ships the tables. `jresolve-core` carries no alias data and may be
+  published. The mechanism is a `maven-enforcer-plugin` `requireProperty` rule in
+  profiles-ie's `release` profile, which fails unless `jresolve.aliasCorpus` is
+  `sourced`; core is released with `-Prelease -pl jresolve-core -am`.
 - **Phonetics do not ship in v1.** D8's reasoning stands: they are low-yield next
   to a good alias table, and both routes to them cost more than the gain. A
   hand-written ruleset is nontrivial to maintain, and a dependency would reopen

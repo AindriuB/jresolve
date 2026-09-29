@@ -59,8 +59,8 @@
     <animal-sniffer-maven-plugin.version>1.23</animal-sniffer-maven-plugin.version>
     <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
-    <maven-gpg-plugin.version>3.2.4</maven-gpg-plugin.version>
-    <central-publishing-maven-plugin.version>0.5.0</central-publishing-maven-plugin.version>
+    <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
+    <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -288,10 +288,22 @@
       or from CI secrets; the server id below is a reference to an entry
       there, not a secret itself.
 
-      NOTE: this profile makes publishing POSSIBLE, not PERMITTED. D19 makes a
-      licensed alias corpus a release gate, and jresolve-profiles-ie still
-      ships hand-written illustrative tables. Nothing publishes until that is
-      replaced; see task 28 in docs/plan/PLAN.md.
+      THE D19 GATE. D19 makes a licensed alias corpus a release gate, and
+      jresolve-profiles-ie still ships hand-written illustrative tables, so it
+      must not be signed or uploaded. The gate is mechanical: under -Prelease,
+      jresolve-profiles-ie runs a maven-enforcer requireProperty rule that
+      fails the build unless its jresolve.aliasCorpus property is "sourced"
+      (it is "illustrative" until task 28 in docs/plan/PLAN.md replaces the
+      tables). jresolve-core carries no alias data and may be published. The
+      central-publishing configuration below also excludes profiles-ie from the
+      bundle, as a second line of defence.
+
+      So `-Prelease` over the whole reactor fails, on purpose. The one command
+      that releases core is:
+
+          mvn -B -Prelease -pl jresolve-core -am clean deploy
+
+      (add -DskipPublishing=true -Dgpg.skip for a dry run that uploads nothing).
     -->
     <profile>
       <id>release</id>
@@ -324,6 +336,9 @@
                 a judgement no plugin can make.
               -->
               <autoPublish>false</autoPublish>
+              <excludeArtifacts>
+                <excludeArtifact>jresolve-profiles-ie</excludeArtifact>
+              </excludeArtifacts>
             </configuration>
           </plugin>
         </plugins>
