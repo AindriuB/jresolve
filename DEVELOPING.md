@@ -66,9 +66,12 @@ enforces it: a profile dependency in core's pom is a cycle, and Maven refuses to
 build. See [docs/architecture.md](docs/architecture.md) for the type model.
 
 **The vocabulary rule.** `jresolve-core` may not name a domain concept: a
-person, a name of any kind, an address, a date of birth, a country. Not in
-identifiers, not in Javadoc, not in tests. A profile module exists so that the
-domain words have somewhere to live. `DomainVocabularyTest` checks it, below.
+person, an address, a date of birth, a country. `name` is banned only in its
+personal sense (`firstName`, `lastName`, `fullName`, `givenName`, `surname`);
+it is fine as a field identifier (`fieldName`, `FieldDefinition.getName()`).
+Not in identifiers, not in Javadoc, not in tests. A profile module exists so
+that the domain words have somewhere to live. See
+[docs/conventions.md](docs/conventions.md) for the full list. `DomainVocabularyTest` checks it, below.
 
 ## The build gates
 
@@ -145,7 +148,8 @@ Expecting empty but was: ["src/main/java/io/github/aindriub/jresolve/field/CostT
 ```
 
 Each entry is `file:line — the matched text`. The line numbers after the test
-names in these quotes vary with the build and the test file; do not rely on them. Fix: rename to a neutral word
+names in these quotes vary with the build and the test file; do not rely on
+them. Fix: rename to a neutral word
 (`label`, `code`, `reference`) or move the code to a profile module. The test
 matches text, not meaning, so it cannot tell a domain concept from an English
 word that looks like one, and a domain concept in words its list lacks passes.
