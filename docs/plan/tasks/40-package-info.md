@@ -61,3 +61,19 @@ met except one false claim.
     probability.
 - Every other claim was checked and is accurate. Continue on branch
   `task/40-package-info`.
+
+## Attempt 2 — failed
+
+Review REQUEST CHANGES (commit e1a3a50). The estimator and FieldEvidence fixes
+landed; the third did not, though the commit message says it did.
+
+- **Probability sentence unchanged.** `scoring/package-info.java:15-16` still
+  reads "A probability is only produced when the model carries prior odds".
+  `ProbabilityModel` returns a probability with no prior odds, so the sentence
+  is false for this package's own extension point. Name the Fellegi-Sunter path,
+  e.g. "`FellegiSunterScorer` only produces a probability when its
+  `FellegiSunterModel` carries prior odds". Confirm with
+  `git show HEAD:<path> | sed -n 15,17p` before claiming it is fixed.
+- Also re-wrap `evidence/package-info.java:8` (about 100 columns) to match the
+  file.
+- Continue on branch `task/40-package-info`.
