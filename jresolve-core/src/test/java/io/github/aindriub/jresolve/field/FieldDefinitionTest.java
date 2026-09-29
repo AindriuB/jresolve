@@ -10,43 +10,42 @@ class FieldDefinitionTest {
     private static final FieldComparator<String> COMPARATOR = new ExactFieldComparator<>();
 
     @Test
-    void exposesNamePreparersComparatorCostAndRequired() {
+    void exposesNamePreparersComparatorCost() {
         FieldDefinition<String, String, String> definition = new FieldDefinition<>(
-                "widgetCode", s -> s, c -> c, COMPARATOR, CostTiers.CHEAP, true);
+                "widgetCode", s -> s, c -> c, COMPARATOR, CostTiers.CHEAP);
 
         assertThat(definition.getName()).isEqualTo("widgetCode");
         assertThat(definition.getSourcePreparer().apply("x")).isEqualTo("x");
         assertThat(definition.getCandidatePreparer().apply("y")).isEqualTo("y");
         assertThat(definition.getComparator()).isSameAs(COMPARATOR);
         assertThat(definition.getCost()).isEqualTo(CostTiers.CHEAP);
-        assertThat(definition.isRequired()).isTrue();
     }
 
     @Test
     void rejectsNullName() {
         assertThatThrownBy(() -> new FieldDefinition<String, String, String>(
-                null, s -> s, c -> c, COMPARATOR, CostTiers.CHEAP, false))
+                null, s -> s, c -> c, COMPARATOR, CostTiers.CHEAP))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void rejectsNullSourcePreparer() {
         assertThatThrownBy(() -> new FieldDefinition<String, String, String>(
-                "widgetCode", null, c -> c, COMPARATOR, CostTiers.CHEAP, false))
+                "widgetCode", null, c -> c, COMPARATOR, CostTiers.CHEAP))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void rejectsNullCandidatePreparer() {
         assertThatThrownBy(() -> new FieldDefinition<String, String, String>(
-                "widgetCode", s -> s, null, COMPARATOR, CostTiers.CHEAP, false))
+                "widgetCode", s -> s, null, COMPARATOR, CostTiers.CHEAP))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void rejectsNullComparator() {
         assertThatThrownBy(() -> new FieldDefinition<String, String, String>(
-                "widgetCode", s -> s, c -> c, null, CostTiers.CHEAP, false))
+                "widgetCode", s -> s, c -> c, null, CostTiers.CHEAP))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

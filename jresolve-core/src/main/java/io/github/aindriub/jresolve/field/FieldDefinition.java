@@ -5,7 +5,7 @@ import java.util.function.Function;
 /**
  * Describes one field to compare between a source and a candidate: how to
  * pull the value out of each side, how to compare the results once
- * normalized, and where the field fits in cost ordering and requiredness.
+ * normalized, and where the field fits in cost ordering.
  *
  * <p>The two preparers converge on a common normalized type {@code N} rather
  * than requiring both sides to expose the same raw type — the source and the
@@ -24,15 +24,13 @@ public final class FieldDefinition<S, C, N> {
     private final Function<C, N> candidatePreparer;
     private final FieldComparator<N> comparator;
     private final int cost;
-    private final boolean required;
 
     public FieldDefinition(
             String name,
             Function<S, N> sourcePreparer,
             Function<C, N> candidatePreparer,
             FieldComparator<N> comparator,
-            int cost,
-            boolean required) {
+            int cost) {
         if (name == null) {
             throw new IllegalArgumentException("name must not be null");
         }
@@ -50,7 +48,6 @@ public final class FieldDefinition<S, C, N> {
         this.candidatePreparer = candidatePreparer;
         this.comparator = comparator;
         this.cost = cost;
-        this.required = required;
     }
 
     public String getName() {
@@ -71,9 +68,5 @@ public final class FieldDefinition<S, C, N> {
 
     public int getCost() {
         return cost;
-    }
-
-    public boolean isRequired() {
-        return required;
     }
 }

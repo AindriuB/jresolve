@@ -39,6 +39,27 @@ class JaroWinklerSimilarityTest {
     }
 
     @Test
+    void constructorRejectsANegativeMaxPrefixLength() {
+        assertThatThrownBy(() -> new JaroWinklerSimilarity(0.1, -1, 0.7))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxPrefixLength");
+    }
+
+    @Test
+    void constructorRejectsBoostThresholdBelowZero() {
+        assertThatThrownBy(() -> new JaroWinklerSimilarity(0.1, 4, -0.01))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("boostThreshold");
+    }
+
+    @Test
+    void constructorRejectsBoostThresholdAboveOne() {
+        assertThatThrownBy(() -> new JaroWinklerSimilarity(0.1, 4, 1.01))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("boostThreshold");
+    }
+
+    @Test
     void constructorAcceptsPrefixScaleAtBounds() {
         new JaroWinklerSimilarity(0.0, 4, 0.7);
         new JaroWinklerSimilarity(0.25, 4, 0.7);

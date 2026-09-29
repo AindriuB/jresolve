@@ -17,6 +17,9 @@ public final class ScoredCandidate<C> {
     private final List<FieldContribution> contributions;
 
     public ScoredCandidate(C candidate, Score score, List<FieldContribution> contributions) {
+        if (candidate == null) {
+            throw new IllegalArgumentException("candidate must not be null");
+        }
         if (score == null) {
             throw new IllegalArgumentException("score must not be null");
         }

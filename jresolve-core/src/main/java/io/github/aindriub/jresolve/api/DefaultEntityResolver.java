@@ -62,13 +62,7 @@ final class DefaultEntityResolver<S, C> implements EntityResolver<S, C> {
         }
         this.tiers = Collections.unmodifiableList(tierCopy);
         this.fields = Collections.unmodifiableList(flat);
-        List<CandidateRule<S, C>> ruleCopy = new ArrayList<CandidateRule<S, C>>();
-        for (CandidateRule<S, C> rule : rules) {
-            if (rule != null) {
-                ruleCopy.add(rule);
-            }
-        }
-        this.rules = Collections.unmodifiableList(ruleCopy);
+        this.rules = Collections.unmodifiableList(new ArrayList<CandidateRule<S, C>>(rules));
         this.scorer = scorer;
         this.decisionEngine = decisionEngine;
     }

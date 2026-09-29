@@ -31,7 +31,6 @@ public final class EntityResolverBuilder<S, C> {
 
     private final List<FieldSlot<S, C>> fieldSlots = new ArrayList<FieldSlot<S, C>>();
     private final Map<String, Integer> costOverrides = new LinkedHashMap<String, Integer>();
-    private final Set<String> requiredFieldNames = new LinkedHashSet<String>();
     private final List<CandidateRule<S, C>> rules = new ArrayList<CandidateRule<S, C>>();
     private MatchScorer scorer;
     private MatchDecisionEngine<C> decisionEngine;
@@ -144,23 +143,6 @@ public final class EntityResolverBuilder<S, C> {
     }
 
     /**
-     * Marks the named field required. This only sets {@link
-     * io.github.aindriub.jresolve.field.FieldDefinition#isRequired()}; the
-     * resolver itself does not read that flag, so marking a field required
-     * here has no effect on its own. It is metadata for a scorer to
-     * consult — {@link io.github.aindriub.jresolve.scoring.RuleBasedScorer}
-     * enforces requiredness through its own, separate mechanism, {@link
-     * io.github.aindriub.jresolve.scoring.RuleBasedScorer.Builder#requiredField(String)},
-     * which must be configured independently for a missing field to make a
-     * candidate unscorable. Validated at {@link #build()}: a name matching
-     * no configured field fails the build.
-     */
-    public EntityResolverBuilder<S, C> required(String fieldName) {
-        requiredFieldNames.add(fieldName);
-        return this;
-    }
-
-    /**
      * Adds a hard veto evaluated between cost tiers. Rules run in the order
      * they were added.
      *
@@ -235,19 +217,12 @@ public final class EntityResolverBuilder<S, C> {
                         "field '" + name + "': " + join(nullArguments) + " must not be null");
             }
             Integer cost = costOverrides.get(name);
-            boolean required = requiredFieldNames.contains(name);
-            definitions.add(slot.toFieldDefinition(cost != null ? cost : CostTiers.CHEAP, required));
+            definitions.add(slot.toFieldDefinition(cost != null ? cost : CostTiers.CHEAP));
         }
 
         for (String name : costOverrides.keySet()) {
             if (!seenNames.contains(name)) {
                 throw new EntityResolutionConfigurationException("cost configured for unknown field: '" + name + "'");
-            }
-        }
-        for (String name : requiredFieldNames) {
-            if (!seenNames.contains(name)) {
-                throw new EntityResolutionConfigurationException(
-                        "required configured for unknown field: '" + name + "'");
             }
         }
 
@@ -330,7 +305,7 @@ public final class EntityResolverBuilder<S, C> {
 
         List<String> getNullArguments();
 
-        FieldDefinition<S, C, ?> toFieldDefinition(int cost, boolean required);
+        FieldDefinition<S, C, ?> toFieldDefinition(int cost);
     }
 
     private static final class TypedFieldSlot<S, C, N> implements FieldSlot<S, C> {
@@ -365,8 +340,8 @@ public final class EntityResolverBuilder<S, C> {
         }
 
         @Override
-        public FieldDefinition<S, C, ?> toFieldDefinition(int cost, boolean required) {
-            return new FieldDefinition<S, C, N>(name, sourcePreparer, candidatePreparer, comparator, cost, required);
+        public FieldDefinition<S, C, ?> toFieldDefinition(int cost) {
+            return new FieldDefinition<S, C, N>(name, sourcePreparer, candidatePreparer, comparator, cost);
         }
     }
 }

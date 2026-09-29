@@ -74,4 +74,12 @@ class ScoredCandidateTest {
 
         assertThat(candidate.toString()).doesNotContain("SENTINEL-CANDIDATE-VALUE");
     }
+
+    @Test
+    void rejectsANullCandidate() {
+        Score score = new Score(1.0, ScoreScale.POINTS, "rules", null);
+
+        assertThatThrownBy(() -> new ScoredCandidate<String>(null, score, new ArrayList<>()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }
