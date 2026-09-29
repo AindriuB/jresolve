@@ -25,18 +25,22 @@ import java.util.concurrent.ConcurrentHashMap;
  *     {@code SimilarityFieldComparator}, {@code AliasAwareFieldComparator},
  *     {@code TokenSubsumptionComparator}</td></tr>
  * <tr><td>{@code VERY_HIGH}, {@code HIGH}, {@code MEDIUM}, {@code LOW}</td>
- *     <td>{@code SimilarityFieldComparator} (via {@code SimilarityBands}); also
- *     {@code AliasAwareFieldComparator} when its delegate produces them</td></tr>
+ *     <td>{@code SimilarityFieldComparator} (via {@code SimilarityBands})</td></tr>
  * <tr><td>{@code ALIAS_TRANSLATION}, {@code ALIAS_NICKNAME}, {@code ALIAS_VARIANT}</td>
  *     <td>{@code AliasAwareFieldComparator}</td></tr>
  * <tr><td>{@code SUBSUMED}, {@code PARTIAL_OVERLAP}</td>
  *     <td>{@code TokenSubsumptionComparator}</td></tr>
  * <tr><td>{@code CONFLICT}</td><td>{@code ExactFieldComparator},
- *     {@code TokenSubsumptionComparator}; also {@code AliasAwareFieldComparator}
- *     when its delegate produces it</td></tr>
+ *     {@code TokenSubsumptionComparator}</td></tr>
  * <tr><td>{@code MISSING_ONE}, {@code MISSING_BOTH}</td>
- *     <td>every comparator, via {@code AbstractNullSafeFieldComparator}</td></tr>
+ *     <td>{@code AbstractNullSafeFieldComparator} (so every core comparator, for a
+ *     {@code null} value); {@code TokenSubsumptionComparator} also returns them
+ *     itself for values with no tokens</td></tr>
  * </table>
+ *
+ * <p>When neither the exact check nor the alias repository decides,
+ * {@code AliasAwareFieldComparator} returns its delegate's category unchanged,
+ * so it can pass on any category its delegate produces.
  */
 public final class ComparisonCategory {
 
