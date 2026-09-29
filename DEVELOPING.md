@@ -140,11 +140,12 @@ reads every `.java` file under core's `src/main` and `src/test` and fails on a
 domain word. A stray `address` in a variable name gives:
 
 ```
-[ERROR]   DomainVocabularyTest.coreNamesNoDomainConcept:98 [docs/conventions.md forbids domain vocabulary in jresolve-core]
+[ERROR]   DomainVocabularyTest.coreNamesNoDomainConcept:<line> [docs/conventions.md forbids domain vocabulary in jresolve-core]
 Expecting empty but was: ["src/main/java/io/github/aindriub/jresolve/field/CostTiers.java:20 — address"]
 ```
 
-Each entry is `file:line — the matched text`. Fix: rename to a neutral word
+Each entry is `file:line — the matched text`. The line numbers after the test
+names in these quotes vary with the build and the test file; do not rely on them. Fix: rename to a neutral word
 (`label`, `code`, `reference`) or move the code to a profile module. The test
 matches text, not meaning, so it cannot tell a domain concept from an English
 word that looks like one, and a domain concept in words its list lacks passes.
@@ -158,7 +159,7 @@ what it publishes is expressed in core's types. A profile class that ends up
 outside `io.github.aindriub.jresolve.profiles.ie` fails with:
 
 ```
-[ERROR]   ModuleBoundaryTest.thisModuleLivesUnderItsOwnSubtree:53
+[ERROR]   ModuleBoundaryTest.thisModuleLivesUnderItsOwnSubtree:<line>
 Expecting actual:
   "io.github.aindriub.jresolve.field.IrishAddressComparator"
 to start with:
@@ -201,9 +202,11 @@ The rules are in [docs/conventions.md](docs/conventions.md#tests). In short:
 - JUnit 5 and AssertJ. Test names read as sentences: `missingOnOneSideIsNotAConflict()`.
 - One behaviour per test. A name that needs "and" is two tests.
 - Fixtures are synthetic. No real personal data in any file, and none in core's
-  tests may use domain vocabulary either.
+  tests may use domain vocabulary either. When a fixture states its data is
+  invented, use the sanctioned wording "none describes anyone real"; the
+  natural phrasing with "names a real person" trips `DomainVocabularyTest`.
 - An invisible character (non-breaking space, zero-width, combining mark) is
-  written as an escape such as ` `, never pasted raw.
+  written as an escape such as `\u00A0`, never pasted raw.
 - No sleeps, no ordering between tests, no shared mutable static. Hand-calculate
   scoring expectations in a comment; never assert a value copied from a run.
 
