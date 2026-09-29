@@ -242,18 +242,19 @@ amended by task 38. Task files are in `docs/plan/tasks/`.
   D19's enforcer message; `-Prelease -pl jresolve-core -am verify` passes.
 - [x] **39 — Rename `forGivenName` to `forNames`.**
 
-### Wave 2 — partial: 41, 42 done; 40, 43, 44 on attempt 2
+### Wave 2 — partial: 41, 42, 44 done; 40, 43 on attempt 3
 
-- [ ] **40 — package-info.** Attempt 2 in flight.
+- [ ] **40 — package-info.** Attempt 3 in flight.
 - [x] **41 — README refresh.** Shows core 0.1.0, profiles-ie marked unpublished, current behaviour in place of the sharp-edge warnings.
 - [x] **42 — Tuning guide.** `docs/tuning.md`, every claim verified against source.
-- [ ] **43 — Developing guide.** Attempt 2 in flight.
-- [ ] **44 — RELEASING.md.** Attempt 2 in flight. Carry-forward from task 38's review:
-  `-DskipPublishing=true` builds no bundle (and SNAPSHOTs never bundle), so the
-  hint at `pom.xml:306` does not give an inspectable bundle. The runbook must
-  document a working inspection procedure, e.g. a real staged upload with
-  autoPublish=false, inspect in the portal, then Drop or Publish. Consider
-  correcting the pom hint too.
+- [ ] **43 — Developing guide.** Attempt 3 in flight.
+- [x] **44 — RELEASING.md.** Merged; 662 tests on main. Documents a working
+  bundle-inspection procedure (staged upload, autoPublish=false). Known gaps
+  left open: LICENSE is not packaged in the jar, and the `pom.xml:306`
+  `-DskipPublishing=true` hint is still wrong. Minor: use
+  `git push origin vX.Y.Z` rather than `git push --tags` (RELEASING.md:161);
+  the "must be exactly" bundle list (:222-230) omits the .asc/checksum files
+  that only the following prose adds.
 
 ## Notes for implementers
 

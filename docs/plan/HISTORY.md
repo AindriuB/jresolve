@@ -3,6 +3,20 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-29 — Milestone 8 wave 2: the release runbook (task 44)
+
+`RELEASING.md` is the manual release runbook for `jresolve-core`: version and
+next-snapshot rules, the `-Prelease` build, a working way to inspect the
+Central bundle (a real staged upload with autoPublish=false, then Drop or
+Publish in the portal), and tag timing. Main is at 662 tests, `BUILD SUCCESS`
+(docs only, no count change); tasks 40 and 43 are on attempt 3.
+
+**Cost:** attempt 1 failed review on the next-snapshot rule, a LICENSE/NOTICE
+jar check, the bundle path, a missing README step and tag timing. The
+skipPublishing dry run builds no bundle, so do not document it as an
+inspection route; the `pom.xml:306` hint still says otherwise. LICENSE is not
+packaged in the jar (Central does not require it).
+
 ## 2026-09-29 — Milestone 8 wave 2, partial: README refresh and tuning guide (tasks 41, 42)
 
 The README now shows `jresolve-core` 0.1.0, marks profiles-ie unpublished
