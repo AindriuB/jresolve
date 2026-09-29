@@ -10,7 +10,6 @@ import io.github.aindriub.jresolve.decision.ThresholdDecisionEngine;
 import io.github.aindriub.jresolve.evidence.ComparisonCategory;
 import io.github.aindriub.jresolve.evidence.TokenSubsumption;
 import io.github.aindriub.jresolve.field.FieldPipeline;
-import io.github.aindriub.jresolve.field.TokenSubsumptionComparator;
 import io.github.aindriub.jresolve.profiles.ie.IrishAddressComparator;
 import io.github.aindriub.jresolve.profiles.ie.IrishAddressPipeline;
 import io.github.aindriub.jresolve.profiles.ie.IrishNameAliases;
@@ -136,10 +135,7 @@ class ReadmeExamplesTest {
                         .weight("surname", ComparisonCategory.ALIAS_TRANSLATION, 25.0)
                         .weight("surname", ComparisonCategory.ALIAS_VARIANT, 27.0)
                         .weight("address", ComparisonCategory.EXACT, 15.0)
-                        // SUBSUMED is not a ComparisonCategory constant.
-                        // Categories are an open value type (D3), and the
-                        // comparator that can produce this one owns it.
-                        .weight("address", TokenSubsumptionComparator.SUBSUMED, 12.0)
+                        .weight("address", ComparisonCategory.SUBSUMED, 12.0)
                         .weight("address", ComparisonCategory.VERY_HIGH, 12.0)
                         .weight("address", ComparisonCategory.HIGH, 8.0)
                         .baseScore(0.0)
@@ -175,5 +171,7 @@ class ReadmeExamplesTest {
                 .isEqualTo(TokenSubsumption.LEFT_SUBSUMES_RIGHT);
         assertThat(pipeline.compare(less, more).getCategory())
                 .isNotEqualTo(ComparisonCategory.CONFLICT);
+        assertThat(pipeline.compare(less, more).getCategory())
+                .isEqualTo(ComparisonCategory.SUBSUMED);
     }
 }

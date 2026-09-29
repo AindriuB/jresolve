@@ -1,6 +1,7 @@
 package io.github.aindriub.jresolve.readme;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.aindriub.jresolve.api.CandidateRule;
 import io.github.aindriub.jresolve.api.EntityResolver;
@@ -195,6 +196,41 @@ class ReadmeExamplesTest {
                 Arrays.asList(new Stored("1", "AB-1", "widget co")));
 
         assertThat(unrelated.getDecision()).isNotEqualTo(Decision.MATCH);
+    }
+
+    @Test
+    void buildRejectsAFuzzyFieldThatWeightsOnlyTheBands() {
+        assertThatThrownBy(() -> RuleBasedScorer.builder()
+                .weight("label", ComparisonCategory.VERY_HIGH, 5.0)
+                .weight("label", ComparisonCategory.HIGH, 3.0)
+                .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("label");
+    }
+
+    @Test
+    void exactWeightedAtZeroIsTheExplicitOptOut() {
+        // Both of these build: an explicit EXACT weight (0.0 to opt out) or a
+        // default weight satisfies the rule.
+        RuleBasedScorer.builder()
+                .weight("label", ComparisonCategory.EXACT, 0.0)
+                .weight("label", ComparisonCategory.VERY_HIGH, 5.0)
+                .build();
+        RuleBasedScorer.builder()
+                .defaultWeight("label", 1.0)
+                .weight("label", ComparisonCategory.VERY_HIGH, 5.0)
+                .build();
+    }
+
+    @Test
+    void subsumedAndPartialOverlapAreConstantsOnComparisonCategory() {
+        RuleBasedScorer.builder()
+                .weight("place", ComparisonCategory.EXACT, 15.0)
+                .weight("place", ComparisonCategory.SUBSUMED, 12.0)
+                .weight("place", ComparisonCategory.PARTIAL_OVERLAP, 4.0)
+                .build();
+        assertThat(ComparisonCategory.SUBSUMED).isNotNull();
+        assertThat(ComparisonCategory.PARTIAL_OVERLAP).isNotNull();
     }
 
     // ------------------------------------------------- 3. cost tiers and rules
