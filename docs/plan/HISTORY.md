@@ -3,6 +3,22 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-29 — Milestone 8 wave 2, partial: README refresh and tuning guide (tasks 41, 42)
+
+The README now shows `jresolve-core` 0.1.0, marks profiles-ie unpublished
+(D19, task 28) with a local-install recipe, and replaces both sharp-edge
+warnings with current behaviour. `docs/tuning.md` is new, and a review checked
+every technical claim in it against source. Main is at 662 tests
+(578 core + 81 profiles + 3), `BUILD SUCCESS`; tasks 40, 43 and 44 are on
+attempt 2.
+
+**Cost:** writing the tuning guide surfaced that an unscorable candidate (for
+example one missing a `requiredField`) appears in neither `getCandidates()` nor
+`getRejectedCandidates()`, so false negatives are hard to diagnose; this needs
+a candidate API change and is logged in PLAN.md. The guide's snippet-drift
+check matches lines anywhere rather than contiguous blocks, so do not lean on
+it as proof a snippet is intact.
+
 ## 2026-09-29 — Milestone 8 wave 1 complete: API sharp edges closed (task 36)
 
 `RuleBasedScorer.Builder.build()` now throws `IllegalArgumentException` for a

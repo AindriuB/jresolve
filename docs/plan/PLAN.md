@@ -242,14 +242,13 @@ amended by task 38. Task files are in `docs/plan/tasks/`.
   D19's enforcer message; `-Prelease -pl jresolve-core -am verify` passes.
 - [x] **39 — Rename `forGivenName` to `forNames`.**
 
-### Wave 2 (ready: 40-44)
+### Wave 2 — partial: 41, 42 done; 40, 43, 44 on attempt 2
 
-- [ ] **40 — package-info.**
-- [ ] **41 — README refresh.** Must also remove the two sharp-edge warnings
-  (around `README.md:278-282`), untrue since task 36.
-- [ ] **42 — Tuning guide.**
-- [ ] **43 — Developing guide.**
-- [ ] **44 — RELEASING.md.** Carry-forward from task 38's review:
+- [ ] **40 — package-info.** Attempt 2 in flight.
+- [x] **41 — README refresh.** Shows core 0.1.0, profiles-ie marked unpublished, current behaviour in place of the sharp-edge warnings.
+- [x] **42 — Tuning guide.** `docs/tuning.md`, every claim verified against source.
+- [ ] **43 — Developing guide.** Attempt 2 in flight.
+- [ ] **44 — RELEASING.md.** Attempt 2 in flight. Carry-forward from task 38's review:
   `-DskipPublishing=true` builds no bundle (and SNAPSHOTs never bundle), so the
   hint at `pom.xml:306` does not give an inspectable bundle. The runbook must
   document a working inspection procedure, e.g. a real staged upload with
@@ -347,8 +346,7 @@ not close all five, and the two below say so rather than being ticked.
 
 ### Raised in milestone 7
 
-- **Two API sharp edges — closed by task 36.** The README warnings are stale
-  until task 41 removes them.
+- **Two API sharp edges — closed by task 36**, README warnings removed by task 41.
 - **Scoring package throws `IllegalArgumentException` for configuration errors**
   while `docs/conventions.md#errors` names `EntityResolutionConfigurationException`.
   Pre-existing, package-wide; task 36 matched the package. Candidate follow-up.
@@ -358,6 +356,24 @@ not close all five, and the two below say so rather than being ticked.
   is manual and untested end to end. That is deliberate — a release workflow
   touches secrets and is its own task — but it means the first real publish
   will exercise a path nothing has rehearsed.
+
+### Raised by wave 2 (tasks 41, 42)
+
+- **An unscorable candidate is invisible.** One missing a `requiredField`
+  appears in neither `MatchResult.getCandidates()` nor `getRejectedCandidates()`
+  (`DefaultEntityResolver.resolveOne` returns null without adding to
+  `rejectedOut`), which makes false negatives awkward to diagnose. Needs a
+  candidate API change.
+- **`pom.xml` dry-run comment (~:306) still recommends `-DskipPublishing=true`,**
+  which builds no bundle. One-line fix needed before release; no task owns it
+  now (task 44 may correct it).
+- **LICENSE is not packaged in the jar.** Central does not require it.
+- **README minor:** the profiles-ie snippet uses `${jresolve.version}`, which
+  consumers do not define; the clone URL is lowercase while the pom says
+  `AindriuB`; the opt-out test could also assert a zero score.
+- **Tuning guide minor:** the snippet-drift check matches lines anywhere rather
+  than contiguous blocks; its calibration term list differs slightly from
+  `calibration.md`; "a margin is a ratio" should read log2 of a ratio.
 
 ### Raised by task 25
 
