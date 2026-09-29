@@ -222,39 +222,55 @@ as zero; `SUBSUMED` lives on the comparator that mints it rather than on
 than accessors, so the asymmetric overload takes method references. All three
 were compile errors or failing assertions, not opinions.
 
-## Milestone 8 — in progress
+## Milestone 8 — complete
 
 Goal: `jresolve-core` 0.1.0 on Maven Central, plus developer guides. Tasks
-36-44. The release itself is manual, after the milestone, core only, per D19 as
-amended by task 38. Task files are in `docs/plan/tasks/`.
+36-44. 665 tests (584 core + 81 profiles), `BUILD SUCCESS`. The release itself
+is manual, after the milestone, core only, per D19 as amended by task 38. It
+is **not yet done**: the next step is following `RELEASING.md`. Task files are
+in `docs/plan/tasks/`.
 
 ### Wave 1 — complete
 
 - [x] **36 — API sharp edges.** `RuleBasedScorer.Builder.build()` rejects a
   field with partial-agreement weights but no `EXACT` weight and no
   `defaultWeight`; `ComparisonCategory` gains `SUBSUMED` and `PARTIAL_OVERLAP`
-  and a producer table. 646 tests on main.
+  and a producer table.
 - [x] **37 — Core cleanups.** Closed the "carried forward from milestone 1"
   gaps: null `ScoredCandidate`, `FieldDefinition.isRequired`/`required(...)`,
   the dead null-rule branch, Jaro-Winkler guard tests, the NFD test literal,
-  the redundant `@SafeVarargs`. 638 tests on the branch.
+  the redundant `@SafeVarargs`.
 - [x] **38 — Release gate and POM.** `-Prelease` now fails at profiles-ie with
   D19's enforcer message; `-Prelease -pl jresolve-core -am verify` passes.
 - [x] **39 — Rename `forGivenName` to `forNames`.**
 
-### Wave 2 — partial: 41, 42, 44 done; 40, 43 on attempt 3
+### Wave 2 — complete
 
-- [ ] **40 — package-info.** Attempt 3 in flight.
+- [x] **40 — package-info.** Every package documented; each claim checked
+  against source. Three attempts.
 - [x] **41 — README refresh.** Shows core 0.1.0, profiles-ie marked unpublished, current behaviour in place of the sharp-edge warnings.
 - [x] **42 — Tuning guide.** `docs/tuning.md`, every claim verified against source.
-- [ ] **43 — Developing guide.** Attempt 3 in flight.
-- [x] **44 — RELEASING.md.** Merged; 662 tests on main. Documents a working
-  bundle-inspection procedure (staged upload, autoPublish=false). Known gaps
-  left open: LICENSE is not packaged in the jar, and the `pom.xml:306`
-  `-DskipPublishing=true` hint is still wrong. Minor: use
-  `git push origin vX.Y.Z` rather than `git push --tags` (RELEASING.md:161);
-  the "must be exactly" bundle list (:222-230) omits the .asc/checksum files
-  that only the following prose adds.
+- [x] **43 — Developing guide.** `DEVELOPING.md`. Three attempts. Minor: ragged
+  line at `DEVELOPING.md:153`.
+- [x] **44 — RELEASING.md.** Documents a working bundle-inspection procedure
+  (staged upload, autoPublish=false). Minor: use `git push origin vX.Y.Z`
+  rather than `git push --tags` (RELEASING.md:161); the "must be exactly"
+  bundle list (:222-230) omits the .asc/checksum files that only the following
+  prose adds.
+
+**The verdict.** The thesis holds for the library as something a stranger can
+pick up: a README, a tuning guide, a developing guide, package documentation
+and a release runbook now exist, and the code gates (D19, the enforcer) make
+publishing core alone possible and profiles-ie impossible. It holds
+*conditionally* for the release: the mechanism is documented and dry-run as far
+as a bundle can be without credentials, but nothing has been published, and
+two gaps below (the `pom.xml` hint, LICENSE not in the jar) should be closed
+before it is.
+
+**What the guides were worth.** Tasks 40 and 43 each failed review twice, and
+in three of the four failures the commit message claimed a fix the diff did not
+contain. Requiring the implementer to quote the changed lines from
+`git show HEAD:<path>` fixed it; use that for documentation tasks.
 
 ## Notes for implementers
 
@@ -262,8 +278,8 @@ amended by task 38. Task files are in `docs/plan/tasks/`.
   of the repo) — see `docs/architecture.md#building`. In Claude Code on the
   web this is provisioned automatically by
   `.claude/hooks/session-start.sh`; on a local machine it is still manual.
-- `mvn clean verify` baseline at milestone 7's close is 630 tests
-  (550 core + 81 profiles), `BUILD SUCCESS`.
+- `mvn clean verify` baseline at milestone 8's close is 665 tests
+  (584 core + 81 profiles), `BUILD SUCCESS`.
 - CI runs the same command on every push and pull request, so a figure in a PR
   is a check rather than a claim.
 - Two gates now fail the build on things a reviewer used to catch by eye:
@@ -278,10 +294,11 @@ reopen the review. Closed items are not listed; see `HISTORY.md`.
 
 ### Raised in milestone 2
 
-- **D19's alias-corpus provenance gates any release.** Decided after milestone
-  4: `IrishNameAliases` ships illustrative, hand-written tables, and nothing
-  publishes until a corpus with a compatible licence replaces them. Not a code
-  defect and not fixable by code — it needs a source. Task 28 owns it.
+- **D19's alias-corpus provenance gates `jresolve-profiles-ie` only.** As
+  amended by task 38: `IrishNameAliases` ships illustrative, hand-written
+  tables, and profiles-ie does not publish until a corpus with a compatible
+  licence replaces them. `jresolve-core` may ship. Not fixable by code — it
+  needs a source. Task 28 owns it.
 - **`IrishAddressComparator` cannot emit `PARTIAL_OVERLAP` or `CONFLICT`** —
   it bands those two cases instead. Task 16's scorer configures weights for
   them anyway so a later change surfaces as a wrong score rather than a

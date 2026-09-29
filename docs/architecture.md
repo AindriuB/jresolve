@@ -34,6 +34,9 @@ and the reviewer checks it.
 
 ## Building
 
+The contributor workflow is in `DEVELOPING.md`; this section covers only the
+toolchain constraint.
+
 The build compiles on JDK 17, pinned by `maven-toolchains-plugin`; JDK 8 is
 unsupported for building even though 8 is the compilation target. This needs a
 `toolchains.xml` on the machine — it is not part of the repo and does not

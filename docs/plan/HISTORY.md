@@ -3,6 +3,22 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-29 — Milestone 8 complete: package docs and developing guide (tasks 40, 43)
+
+Every package now has a `package-info.java` checked against source, and
+`DEVELOPING.md` tells a contributor how to build, test and change the library.
+Milestone 8 is complete at 665 tests (584 core + 81 profiles), `BUILD SUCCESS`.
+The core 0.1.0 release is the manual step that follows, per `RELEASING.md`; it
+has not been done.
+
+**Cost:** both tasks took three attempts. Task 40 first implied an in-library
+estimator that does not exist, then kept a probability sentence its commit
+claimed to have fixed. Task 43 first contained a raw U+00A0, then kept a
+vocabulary-rule error its commit claimed to have fixed. Twice a commit message
+claimed a fix absent from the diff; making the implementer quote the changed
+lines from `git show HEAD:<path>` cured it. Open: the `pom.xml:306`
+`-DskipPublishing=true` hint builds no bundle, LICENSE is not in the jar.
+
 ## 2026-09-29 — Milestone 8 wave 2: the release runbook (task 44)
 
 `RELEASING.md` is the manual release runbook for `jresolve-core`: version and
