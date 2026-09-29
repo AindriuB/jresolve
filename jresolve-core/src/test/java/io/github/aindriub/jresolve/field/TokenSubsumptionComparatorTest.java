@@ -271,7 +271,6 @@ class TokenSubsumptionComparatorTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-
     @Test
     void itsCategoriesAreTheBuiltInConstants() {
         assertThat(TokenSubsumptionComparator.SUBSUMED).isSameAs(ComparisonCategory.SUBSUMED);

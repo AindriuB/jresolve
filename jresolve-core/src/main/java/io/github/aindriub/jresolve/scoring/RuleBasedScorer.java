@@ -8,6 +8,7 @@ import io.github.aindriub.jresolve.result.Score;
 import io.github.aindriub.jresolve.result.ScoreScale;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -35,7 +36,7 @@ public final class RuleBasedScorer implements MatchScorer {
     public static final String ALGORITHM = "RULE_BASED_V1";
 
     private static final List<ComparisonCategory> PARTIAL_AGREEMENT = Collections.unmodifiableList(
-            java.util.Arrays.asList(
+            Arrays.asList(
                     ComparisonCategory.VERY_HIGH, ComparisonCategory.HIGH,
                     ComparisonCategory.MEDIUM, ComparisonCategory.LOW,
                     ComparisonCategory.ALIAS_TRANSLATION, ComparisonCategory.ALIAS_NICKNAME,

@@ -99,7 +99,6 @@ class ComparisonCategoryTest {
         }
     }
 
-
     @Test
     void subsumedAndPartialOverlapAreBuiltIn() {
         assertThat(ComparisonCategory.SUBSUMED).isSameAs(ComparisonCategory.of("SUBSUMED"));

@@ -22,14 +22,18 @@ import java.util.concurrent.ConcurrentHashMap;
  * <caption>Built-in categories and their producers</caption>
  * <tr><th>Constant</th><th>Produced by</th></tr>
  * <tr><td>{@code EXACT}</td><td>{@code ExactFieldComparator},
- *     {@code SimilarityFieldComparator}, {@code AliasAwareFieldComparator}</td></tr>
+ *     {@code SimilarityFieldComparator}, {@code AliasAwareFieldComparator},
+ *     {@code TokenSubsumptionComparator}</td></tr>
  * <tr><td>{@code VERY_HIGH}, {@code HIGH}, {@code MEDIUM}, {@code LOW}</td>
- *     <td>{@code SimilarityFieldComparator} (via {@code SimilarityBands})</td></tr>
+ *     <td>{@code SimilarityFieldComparator} (via {@code SimilarityBands}); also
+ *     {@code AliasAwareFieldComparator} when its delegate produces them</td></tr>
  * <tr><td>{@code ALIAS_TRANSLATION}, {@code ALIAS_NICKNAME}, {@code ALIAS_VARIANT}</td>
  *     <td>{@code AliasAwareFieldComparator}</td></tr>
  * <tr><td>{@code SUBSUMED}, {@code PARTIAL_OVERLAP}</td>
  *     <td>{@code TokenSubsumptionComparator}</td></tr>
- * <tr><td>{@code CONFLICT}</td><td>{@code ExactFieldComparator}</td></tr>
+ * <tr><td>{@code CONFLICT}</td><td>{@code ExactFieldComparator},
+ *     {@code TokenSubsumptionComparator}; also {@code AliasAwareFieldComparator}
+ *     when its delegate produces it</td></tr>
  * <tr><td>{@code MISSING_ONE}, {@code MISSING_BOTH}</td>
  *     <td>every comparator, via {@code AbstractNullSafeFieldComparator}</td></tr>
  * </table>
