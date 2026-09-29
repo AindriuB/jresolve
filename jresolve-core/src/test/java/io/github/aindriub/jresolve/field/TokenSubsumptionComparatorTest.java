@@ -270,4 +270,11 @@ class TokenSubsumptionComparatorTest {
         assertThatThrownBy(() -> new TokenSubsumptionComparator(null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void itsCategoriesAreTheBuiltInConstants() {
+        assertThat(TokenSubsumptionComparator.SUBSUMED).isSameAs(ComparisonCategory.SUBSUMED);
+        assertThat(TokenSubsumptionComparator.PARTIAL_OVERLAP)
+                .isSameAs(ComparisonCategory.PARTIAL_OVERLAP);
+    }
 }

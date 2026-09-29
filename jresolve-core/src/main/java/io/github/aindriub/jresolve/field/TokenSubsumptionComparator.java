@@ -78,11 +78,11 @@ import java.util.Set;
 public final class TokenSubsumptionComparator extends AbstractNullSafeFieldComparator<String> {
 
     /** One side's tokens are strictly contained in the other's. */
-    public static final ComparisonCategory SUBSUMED = ComparisonCategory.of("SUBSUMED");
+    public static final ComparisonCategory SUBSUMED = ComparisonCategory.SUBSUMED;
 
     /** The sides share tokens, but neither contains the other. */
     public static final ComparisonCategory PARTIAL_OVERLAP =
-            ComparisonCategory.of("PARTIAL_OVERLAP");
+            ComparisonCategory.PARTIAL_OVERLAP;
 
     private final TokenSplitter splitter;
 

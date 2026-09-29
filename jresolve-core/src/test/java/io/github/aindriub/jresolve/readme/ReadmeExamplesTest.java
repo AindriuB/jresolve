@@ -219,6 +219,7 @@ class ReadmeExamplesTest {
                 .rule(referenceMustNotConflict)
                 .scorer(RuleBasedScorer.builder()
                         .weight("reference", ComparisonCategory.EXACT, 10.0)
+                        .weight("label", ComparisonCategory.EXACT, 0.0)
                         .weight("label", ComparisonCategory.VERY_HIGH, 5.0)
                         .baseScore(0.0)
                         .build())

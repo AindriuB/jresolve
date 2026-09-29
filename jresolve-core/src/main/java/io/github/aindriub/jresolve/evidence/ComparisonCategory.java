@@ -15,6 +15,32 @@ import java.util.concurrent.ConcurrentHashMap;
  * is the one static field this class keeps; it holds category <em>names</em>
  * only — short, fixed, developer-chosen identifiers such as {@code "EXACT"} —
  * and no field value from a compared record is ever stored in it.
+ *
+ * <p>The built-in constants and the core comparators that produce them:
+ *
+ * <table>
+ * <caption>Built-in categories and their producers</caption>
+ * <tr><th>Constant</th><th>Produced by</th></tr>
+ * <tr><td>{@code EXACT}</td><td>{@code ExactFieldComparator},
+ *     {@code SimilarityFieldComparator}, {@code AliasAwareFieldComparator},
+ *     {@code TokenSubsumptionComparator}</td></tr>
+ * <tr><td>{@code VERY_HIGH}, {@code HIGH}, {@code MEDIUM}, {@code LOW}</td>
+ *     <td>{@code SimilarityFieldComparator} (via {@code SimilarityBands})</td></tr>
+ * <tr><td>{@code ALIAS_TRANSLATION}, {@code ALIAS_NICKNAME}, {@code ALIAS_VARIANT}</td>
+ *     <td>{@code AliasAwareFieldComparator}</td></tr>
+ * <tr><td>{@code SUBSUMED}, {@code PARTIAL_OVERLAP}</td>
+ *     <td>{@code TokenSubsumptionComparator}</td></tr>
+ * <tr><td>{@code CONFLICT}</td><td>{@code ExactFieldComparator},
+ *     {@code TokenSubsumptionComparator}</td></tr>
+ * <tr><td>{@code MISSING_ONE}, {@code MISSING_BOTH}</td>
+ *     <td>{@code AbstractNullSafeFieldComparator} (so every core comparator, for a
+ *     {@code null} value); {@code TokenSubsumptionComparator} also returns them
+ *     itself for values with no tokens</td></tr>
+ * </table>
+ *
+ * <p>When neither the exact check nor the alias repository decides,
+ * {@code AliasAwareFieldComparator} returns its delegate's category unchanged,
+ * so it can pass on any category its delegate produces.
  */
 public final class ComparisonCategory {
 
@@ -28,6 +54,10 @@ public final class ComparisonCategory {
     public static final ComparisonCategory HIGH = of("HIGH");
     public static final ComparisonCategory MEDIUM = of("MEDIUM");
     public static final ComparisonCategory LOW = of("LOW");
+    /** One side's tokens are strictly contained in the other's. */
+    public static final ComparisonCategory SUBSUMED = of("SUBSUMED");
+    /** The sides share tokens, but neither contains the other. */
+    public static final ComparisonCategory PARTIAL_OVERLAP = of("PARTIAL_OVERLAP");
     public static final ComparisonCategory CONFLICT = of("CONFLICT");
     public static final ComparisonCategory MISSING_ONE = of("MISSING_ONE");
     public static final ComparisonCategory MISSING_BOTH = of("MISSING_BOTH");

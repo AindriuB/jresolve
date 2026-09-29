@@ -8,6 +8,7 @@ import io.github.aindriub.jresolve.result.Score;
 import io.github.aindriub.jresolve.result.ScoreScale;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -33,6 +34,14 @@ public final class RuleBasedScorer implements MatchScorer {
      * every score this class produces.
      */
     public static final String ALGORITHM = "RULE_BASED_V1";
+
+    private static final List<ComparisonCategory> PARTIAL_AGREEMENT = Collections.unmodifiableList(
+            Arrays.asList(
+                    ComparisonCategory.VERY_HIGH, ComparisonCategory.HIGH,
+                    ComparisonCategory.MEDIUM, ComparisonCategory.LOW,
+                    ComparisonCategory.ALIAS_TRANSLATION, ComparisonCategory.ALIAS_NICKNAME,
+                    ComparisonCategory.ALIAS_VARIANT, ComparisonCategory.SUBSUMED,
+                    ComparisonCategory.PARTIAL_OVERLAP));
 
     private final Map<String, Map<ComparisonCategory, Double>> categoryWeights;
     private final Map<String, Double> defaultFieldWeights;
@@ -184,7 +193,37 @@ public final class RuleBasedScorer implements MatchScorer {
             return this;
         }
 
+        /**
+         * Builds the scorer.
+         *
+         * <p>A field that has a weight for a partial-agreement category
+         * ({@code VERY_HIGH}, {@code HIGH}, {@code MEDIUM}, {@code LOW},
+         * {@code ALIAS_TRANSLATION}, {@code ALIAS_NICKNAME},
+         * {@code ALIAS_VARIANT}, {@code SUBSUMED}, {@code PARTIAL_OVERLAP})
+         * but neither an {@code EXACT} weight nor a
+         * {@link #defaultWeight(String, double)} would score a perfect
+         * agreement as zero, silently. That is refused. Weighting
+         * {@code EXACT} explicitly at {@code 0.0} is the opt-out.
+         *
+         * @throws IllegalArgumentException if any field breaks that rule; the
+         *     message names the field and never a value
+         */
         public RuleBasedScorer build() {
+            for (Map.Entry<String, Map<ComparisonCategory, Double>> entry : categoryWeights.entrySet()) {
+                String field = entry.getKey();
+                Map<ComparisonCategory, Double> perCategory = entry.getValue();
+                if (perCategory.containsKey(ComparisonCategory.EXACT)
+                        || defaultFieldWeights.containsKey(field)) {
+                    continue;
+                }
+                for (ComparisonCategory partial : PARTIAL_AGREEMENT) {
+                    if (perCategory.containsKey(partial)) {
+                        throw new IllegalArgumentException("field '" + field
+                                + "' weights a partial-agreement category but EXACT is unweighted;"
+                                + " weight EXACT (0.0 to opt out) or set a defaultWeight");
+                    }
+                }
+            }
             return new RuleBasedScorer(this);
         }
     }
