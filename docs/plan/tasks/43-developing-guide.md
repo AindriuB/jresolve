@@ -38,3 +38,25 @@ with a comparator or a profile module.
 - Release steps. They belong to `RELEASING.md` (task 44), so link to it.
 - Editing `docs/architecture.md`, `CLAUDE.md`, `README.md` or `docs/conventions.md`.
 - Changing any gate, or its message, to make it easier to document.
+
+## Attempt 1 — failed
+
+Tests PASS (649); review REQUEST CHANGES (commit f755ba5). Every gate quote was
+verified against the pom and the tests. Two defects:
+
+- **Raw non-breaking space in the sentence that forbids one.**
+  `DEVELOPING.md:206`: the example "written as an escape such as `…`" holds a
+  raw U+00A0 (bytes 0xC2 0xA0), not the escape text, so the code span renders
+  empty. Write the literal escape text, and check with a byte scan that
+  DEVELOPING.md has no U+00A0.
+- **Contradicts the vocabulary rule.** `DEVELOPING.md:68-69` says core may not
+  use "a name of any kind". `docs/conventions.md:47-52` bans `name` only in its
+  personal sense and allows field identifiers (`fieldName`,
+  `FieldDefinition.getName()`). Restate it to match conventions.md.
+- Also fix while there:
+  - `:147-151`: point to the sanctioned synthetic-data wording "none describes
+    anyone real" (`docs/conventions.md:69-75`), since "none names a real person"
+    is the likeliest trip.
+  - `:143`, `:161`: the quoted `:98` and `:53` line numbers come from broken
+    builds and drift (`:53` is already `:52`). Say the line varies, or drop it.
+- Continue on branch `task/43-developing-guide`.
