@@ -1,0 +1,98 @@
+name: release
+
+# DORMANT while GitHub Actions is blocked (billing). Version 0.1.0 is released
+# by a local deploy, not by this workflow. If Actions is live again, DISABLE
+# this workflow before pushing a v* tag, or it will attempt a duplicate upload
+# of a release that was already made by hand.
+#
+# Only jresolve-core is released (D19): every Maven invocation here carries
+# -Prelease -pl jresolve-core -am, because jresolve-profiles-ie ships
+# illustrative alias tables and its release gate fails by design.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and sign without uploading
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the required toolchain JDK from the POM
+        id: toolchain
+        run: |
+          version="$(sed -n 's:.*<toolchain\.jdk\.version>\([0-9][0-9]*\)</toolchain\.jdk\.version>.*:\1:p' pom.xml | head -1)"
+          if [ -z "$version" ]; then
+            echo "could not read toolchain.jdk.version from pom.xml" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK and the signing key
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ steps.toolchain.outputs.version }}
+          cache: maven
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Provision the toolchain
+        run: |
+          mkdir -p "$HOME/.m2"
+          cat > "$HOME/.m2/toolchains.xml" <<XML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <toolchains xmlns="http://maven.apache.org/TOOLCHAINS/1.1.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="http://maven.apache.org/TOOLCHAINS/1.1.0 http://maven.apache.org/xsd/toolchains-1.1.0.xsd">
+            <toolchain>
+              <type>jdk</type>
+              <provides>
+                <version>${{ steps.toolchain.outputs.version }}</version>
+              </provides>
+              <configuration>
+                <jdkHome>${JAVA_HOME}</jdkHome>
+              </configuration>
+            </toolchain>
+          </toolchains>
+          XML
+
+      - name: Check the tag matches the pom version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pom=$(mvn -B -q -Prelease -pl jresolve-core -am help:evaluate -Dexpression=project.version -DforceStdout | tail -1)
+          echo "tag=$tag pom=$pom"
+          if [ "$tag" != "$pom" ]; then
+            echo "::error::tag $tag does not match pom version $pom"
+            exit 1
+          fi
+          case "$pom" in
+            *-SNAPSHOT) echo "::error::refusing to release a snapshot"; exit 1 ;;
+          esac
+
+      - name: Build, test and sign
+        run: mvn -B --no-transfer-progress -Prelease -pl jresolve-core -am verify
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Upload to the Central Portal
+        if: startsWith(github.ref, 'refs/tags/') && inputs.dry_run != true
+        run: mvn -B --no-transfer-progress -Prelease -pl jresolve-core -am deploy -DskipTests
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
