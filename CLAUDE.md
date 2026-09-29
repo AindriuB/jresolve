@@ -13,11 +13,11 @@ dependency (`docs/architecture.md` says why).
 |---|---|
 | How we work (the loop, roles, parallelism) | `docs/workflow.md` |
 | Code style, naming, commit format | `docs/conventions.md` |
-| Module shape, boundaries, the type model | `docs/architecture.md` |
-| Why the design differs from the original spec | `docs/design-decisions.md` |
-| The original specification, unedited | `docs/spec/original-design.md` |
+| Module shape, boundaries, type model | `docs/architecture.md` |
+| Why the design differs from the spec | `docs/design-decisions.md` |
+| The original spec, unedited | `docs/spec/original-design.md` |
 | What is open, in priority order | `docs/plan/PLAN.md` |
-| What was already built — scan, never open `HISTORY.md` whole | `docs/plan/HISTORY-INDEX.md` |
+| What was built — scan; never open `HISTORY.md` whole | `docs/plan/HISTORY-INDEX.md` |
 | One task's full contract | `docs/plan/tasks/<id>.md` |
 | Building, testing, changing the code | `DEVELOPING.md` |
 | Cutting a release (manual) | `RELEASING.md` |
@@ -27,25 +27,20 @@ Load one when needed; do not preload. `docs/spec/original-design.md` is 3.5k
 lines: read a numbered section only. Where it and `design-decisions.md`
 disagree, the latter wins.
 
-## Roles
+## Roles and the loop
 
-Delegate; agents return a conclusion, not a transcript. Seven roles —
-`explorer`, `architect`, `planner`, `implementer`, `tester`, `reviewer`,
-`scribe` — in `~/.claude/agents/`; `docs/workflow.md` says what each is for.
-
-## The loop
-
-`/plan <goal>` → `/fanout` → `/verify` → `/record`. See `docs/workflow.md`.
-Out of band, any time: `/recon <question>`, `/design <question>`.
+Delegate; agents return a conclusion, not a transcript. Roles: `explorer`,
+`architect`, `planner`, `implementer`, `tester`, `reviewer`, `scribe`
+(`~/.claude/agents/`). Loop: `/plan` → `/fanout` → `/verify` → `/record`; any
+time `/recon`, `/design`. Both described in `docs/workflow.md`.
 
 ## Rules that hold everywhere
 
-1. One task = one worktree = one branch. Never two agents in one tree.
-2. A task file names the files it owns. Editing outside that set is a bug —
-   stop and report instead.
-3. Never paste file contents into a summary. Cite `path:line`.
-4. Prefer `rg` over `grep`, and read ranges over whole files.
-5. Java 8 is a hard target, not a preference. `mvn verify` enforces it.
+1. One task = one worktree = one branch; never two agents in one tree.
+2. A task file names the files it owns; editing outside it: stop and report.
+3. Never paste file contents into a summary; cite `path:line`.
+4. Prefer `rg` over `grep`; read ranges, not whole files.
+5. Java 8 is a hard target; `mvn verify` enforces it.
 6. No real personal data anywhere; fixtures are synthetic and say so. In
    `jresolve-core` use the wording `docs/conventions.md` prescribes, because
    the obvious phrasing trips `DomainVocabularyTest`.
