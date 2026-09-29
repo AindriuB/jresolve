@@ -39,3 +39,25 @@ reader should be able to get from the package index to a working resolver.
 - An `overview.html`, javadoc stylesheet or pom javadoc configuration.
 - `jresolve-profiles-ie`'s `package-info`.
 - Adopting doclint's `missing` group, which is an undecided policy in `PLAN.md`.
+
+## Attempt 1 — failed
+
+Tests PASS (646); review REQUEST CHANGES (commit 6b55ed3). Every criterion
+met except one false claim.
+
+- **Implies an estimator that does not exist.**
+  `scoring/package-info.java:11-13` says model parameters "can be estimated
+  from" `LabelledMatchExample`/`UnlabelledMatchExample`. The library does not
+  train (`LabelledMatchExample` says so, and calls itself a shape for a future
+  estimator). Reword: these types hold examples for estimating parameters
+  outside the library.
+- Also fix while there:
+  - `evidence/package-info.java:7-8`: "a similarity and any features" is not
+    true, since `FieldEvidence` has no features accessor. Name what it carries:
+    category, similarity, frequency key, subsumption.
+  - `scoring/package-info.java:16`: "A probability is only produced when the
+    model carries prior odds" should say "the Fellegi-Sunter model", because
+    `ProbabilityModel` is an unimplemented extension point that also returns a
+    probability.
+- Every other claim was checked and is accurate. Continue on branch
+  `task/40-package-info`.
