@@ -303,7 +303,10 @@
 
           mvn -B -Prelease -pl jresolve-core -am clean deploy
 
-      (add -DskipPublishing=true -Dgpg.skip for a dry run that uploads nothing).
+      There is no offline dry run: -DskipPublishing builds no bundle, and a
+      SNAPSHOT is never bundled. To inspect a bundle, follow RELEASING.md,
+      "Inspecting the bundle". The real check is the staged upload with
+      autoPublish=false, inspected in the portal, then Published or Dropped.
     -->
     <profile>
       <id>release</id>
