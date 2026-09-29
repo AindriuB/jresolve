@@ -3,6 +3,26 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-29 — Milestone 8 wave 1 complete: API sharp edges closed (task 36)
+
+`RuleBasedScorer.Builder.build()` now throws `IllegalArgumentException` for a
+field weighted only on partial-agreement categories with no `EXACT` weight and
+no `defaultWeight`, naming the field and never a value; `.weight(field, EXACT,
+0.0)` is the explicit opt-out. `ComparisonCategory` gains `SUBSUMED` and
+`PARTIAL_OVERLAP` (the `TokenSubsumptionComparator` constants alias them) and a
+Javadoc table of which comparator produces each category. 646 tests on main
+(565 core + 81 profiles), `BUILD SUCCESS`. Wave 2 (40-44) is unblocked.
+
+**Cost:** three attempts; attempts 1 and 2 failed review only on the producer
+table, which was written from memory row by row and missed return sites
+(`TokenSubsumptionComparator` returns `EXACT` and `CONFLICT`; the alias
+comparator passes its delegate's category through). Derive such a table from
+every comparator return site, and state pass-through once under the table.
+Reviewer rulings left open: the scoring package's `IllegalArgumentException`
+disagrees with `conventions.md#errors`, and `DefaultFellegiSunterModel` still
+fails only at `resolve()` when `EXACT` has no m/u. README still carries the two
+now-untrue warnings; task 41 removes them.
+
 ## 2026-09-29 — Milestone 8 wave 1, partial: core cleanups, a release gate that bites, and forNames (tasks 37, 38, 39)
 
 Three of wave 1's four tasks landed; task 36 is still in review. 638 tests

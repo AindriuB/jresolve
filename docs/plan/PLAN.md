@@ -228,10 +228,12 @@ Goal: `jresolve-core` 0.1.0 on Maven Central, plus developer guides. Tasks
 36-44. The release itself is manual, after the milestone, core only, per D19 as
 amended by task 38. Task files are in `docs/plan/tasks/`.
 
-### Wave 1
+### Wave 1 — complete
 
-- [ ] **36 — API sharp edges.** In progress, attempt 3 (failed review twice;
-  see the task file). Do not merge until it passes.
+- [x] **36 — API sharp edges.** `RuleBasedScorer.Builder.build()` rejects a
+  field with partial-agreement weights but no `EXACT` weight and no
+  `defaultWeight`; `ComparisonCategory` gains `SUBSUMED` and `PARTIAL_OVERLAP`
+  and a producer table. 646 tests on main.
 - [x] **37 — Core cleanups.** Closed the "carried forward from milestone 1"
   gaps: null `ScoredCandidate`, `FieldDefinition.isRequired`/`required(...)`,
   the dead null-rule branch, Jaro-Winkler guard tests, the NFD test literal,
@@ -240,10 +242,11 @@ amended by task 38. Task files are in `docs/plan/tasks/`.
   D19's enforcer message; `-Prelease -pl jresolve-core -am verify` passes.
 - [x] **39 — Rename `forGivenName` to `forNames`.**
 
-### Wave 2 (not started)
+### Wave 2 (ready: 40-44)
 
 - [ ] **40 — package-info.**
-- [ ] **41 — README refresh.**
+- [ ] **41 — README refresh.** Must also remove the two sharp-edge warnings
+  (around `README.md:278-282`), untrue since task 36.
 - [ ] **42 — Tuning guide.**
 - [ ] **43 — Developing guide.**
 - [ ] **44 — RELEASING.md.** Carry-forward from task 38's review:
@@ -344,16 +347,13 @@ not close all five, and the two below say so rather than being ticked.
 
 ### Raised in milestone 7
 
-- **Two API sharp edges the guide had to warn about rather than the API
-  preventing.** A similarity comparator returns `EXACT` when two values are
-  equal after normalization, so a scorer configured with only band weights
-  scores a perfect agreement as zero — silently, and in the commonest case,
-  since normalization exists to produce exactly that. And a category a
-  comparator mints (`TokenSubsumptionComparator.SUBSUMED`) is not reachable
-  from `ComparisonCategory`, which is correct under D3's open value type and
-  still surprising from outside. Both are documented in the README; neither is
-  fixed, because task 33 was explicitly not allowed to change the API to make
-  the guide easier. Whether either deserves an API change is open.
+- **Two API sharp edges — closed by task 36.** The README warnings are stale
+  until task 41 removes them.
+- **Scoring package throws `IllegalArgumentException` for configuration errors**
+  while `docs/conventions.md#errors` names `EntityResolutionConfigurationException`.
+  Pre-existing, package-wide; task 36 matched the package. Candidate follow-up.
+- **`DefaultFellegiSunterModel` fails only at `resolve()`, not `build()`,** when
+  `EXACT` has no m/u probabilities. Task 36 fixed only `RuleBasedScorer`.
 - **CI does not yet run on a release path.** Task 34 runs the build; publishing
   is manual and untested end to end. That is deliberate — a release workflow
   touches secrets and is its own task — but it means the first real publish
