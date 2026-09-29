@@ -47,6 +47,7 @@ class RuleBasedScorerTest {
         RuleBasedScorer scorer = RuleBasedScorer.builder()
                 .baseScore(1.0)
                 .weight("code", ComparisonCategory.EXACT, 5.0)
+                .weight("tier", ComparisonCategory.EXACT, 0.0)
                 .weight("tier", ComparisonCategory.HIGH, 3.0)
                 .weight("reference", ComparisonCategory.CONFLICT, -8.0)
                 .defaultWeight("status", 2.0)
@@ -81,6 +82,7 @@ class RuleBasedScorerTest {
         RuleBasedScorer scorer = RuleBasedScorer.builder()
                 .baseScore(1.0)
                 .weight("code", ComparisonCategory.EXACT, 5.0)
+                .weight("tier", ComparisonCategory.EXACT, 0.0)
                 .weight("tier", ComparisonCategory.HIGH, 3.0)
                 .weight("reference", ComparisonCategory.CONFLICT, -8.0)
                 .defaultWeight("status", 2.0)
@@ -101,6 +103,7 @@ class RuleBasedScorerTest {
     void emitsOneContributionPerFieldInEvidenceIterationOrder() {
         RuleBasedScorer scorer = RuleBasedScorer.builder()
                 .weight("code", ComparisonCategory.EXACT, 5.0)
+                .weight("tier", ComparisonCategory.EXACT, 0.0)
                 .weight("tier", ComparisonCategory.HIGH, 3.0)
                 .build();
         Map<String, FieldEvidence> fields = new LinkedHashMap<>();
@@ -218,5 +221,62 @@ class RuleBasedScorerTest {
         assertThat(result.getContributions())
                 .extracting(FieldContribution::getSubsumption)
                 .containsExactly(TokenSubsumption.NOT_APPLICABLE);
+    }
+
+    @Test
+    void rejectsABandOnlyField() {
+        assertThatThrownBy(() -> RuleBasedScorer.builder()
+                .weight("label", ComparisonCategory.HIGH, 3.0).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("label")
+                .hasMessageContaining("EXACT");
+    }
+
+    @Test
+    void rejectsAnAliasOnlyField() {
+        assertThatThrownBy(() -> RuleBasedScorer.builder()
+                .weight("label", ComparisonCategory.ALIAS_NICKNAME, 3.0).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("label")
+                .hasMessageContaining("EXACT");
+    }
+
+    @Test
+    void rejectsASubsumptionOnlyField() {
+        assertThatThrownBy(() -> RuleBasedScorer.builder()
+                .weight("label", ComparisonCategory.SUBSUMED, 3.0)
+                .weight("label", ComparisonCategory.PARTIAL_OVERLAP, 1.0).build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("label")
+                .hasMessageContaining("EXACT");
+    }
+
+    @Test
+    void aDefaultWeightSatisfiesTheExactRule() {
+        RuleBasedScorer scorer = RuleBasedScorer.builder()
+                .weight("label", ComparisonCategory.HIGH, 3.0)
+                .defaultWeight("label", 1.0).build();
+
+        assertThat(scorer).isNotNull();
+    }
+
+    @Test
+    void anExplicitZeroExactWeightIsTheOptOut() {
+        RuleBasedScorer scorer = RuleBasedScorer.builder()
+                .weight("label", ComparisonCategory.HIGH, 3.0)
+                .weight("label", ComparisonCategory.EXACT, 0.0).build();
+
+        assertThat(scorer).isNotNull();
+    }
+
+    @Test
+    void aFieldWeightedOnlyOnConflictMissingOrAConsumerCategoryStillBuilds() {
+        RuleBasedScorer scorer = RuleBasedScorer.builder()
+                .weight("a", ComparisonCategory.CONFLICT, -2.0)
+                .weight("b", ComparisonCategory.MISSING_ONE, -1.0)
+                .weight("c", ComparisonCategory.MISSING_BOTH, 0.0)
+                .weight("d", ComparisonCategory.of("CUSTOM"), 1.0).build();
+
+        assertThat(scorer).isNotNull();
     }
 }

@@ -98,4 +98,11 @@ class ComparisonCategoryTest {
             pool.shutdown();
         }
     }
+
+
+    @Test
+    void subsumedAndPartialOverlapAreBuiltIn() {
+        assertThat(ComparisonCategory.SUBSUMED).isSameAs(ComparisonCategory.of("SUBSUMED"));
+        assertThat(ComparisonCategory.PARTIAL_OVERLAP).isSameAs(ComparisonCategory.of("PARTIAL_OVERLAP"));
+    }
 }
