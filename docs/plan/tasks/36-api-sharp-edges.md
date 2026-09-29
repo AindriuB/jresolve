@@ -1,0 +1,49 @@
+# 36 — Close the two API sharp edges before the API is public
+
+**Repo:** .
+**Depends on:** none
+**Owns:**
+- jresolve-core/src/main/java/io/github/aindriub/jresolve/scoring/RuleBasedScorer.java
+- jresolve-core/src/main/java/io/github/aindriub/jresolve/evidence/ComparisonCategory.java
+- jresolve-core/src/main/java/io/github/aindriub/jresolve/field/TokenSubsumptionComparator.java
+- jresolve-core/src/test/java/io/github/aindriub/jresolve/scoring/RuleBasedScorerTest.java
+- jresolve-core/src/test/java/io/github/aindriub/jresolve/evidence/ComparisonCategoryTest.java
+- jresolve-core/src/test/java/io/github/aindriub/jresolve/field/TokenSubsumptionComparatorTest.java
+- jresolve-core/src/test/java/io/github/aindriub/jresolve/readme/ReadmeExamplesTest.java
+- README.md — only the code snippet mirroring the `ReadmeExamplesTest` example this task changes; nothing else
+
+## Goal
+Milestone 7's README had to warn about two traps the API should prevent.
+First, a scorer that weights only the partial-agreement categories of a field
+scores a perfect `EXACT` agreement as zero, silently. Second, `SUBSUMED` and
+`PARTIAL_OVERLAP` cannot be reached from `ComparisonCategory`. 0.1.0 is the
+last point at which fixing either costs nothing, so `build()` now refuses the
+first, and `ComparisonCategory` carries the second.
+
+## Context
+- jresolve-core/src/main/java/io/github/aindriub/jresolve/scoring/RuleBasedScorer.java:98-191 — `weightFor` falls back to the default weight and then to 0.0. `Builder.build()` at :187 validates nothing today.
+- jresolve-core/src/main/java/io/github/aindriub/jresolve/evidence/ComparisonCategory.java:5-33 — the open value type, its interning, and the existing constants.
+- jresolve-core/src/main/java/io/github/aindriub/jresolve/field/TokenSubsumptionComparator.java:81-85 — where `SUBSUMED` and `PARTIAL_OVERLAP` are minted today.
+- docs/conventions.md#errors — a configuration error fails at `build()`, and its message names the field and the constraint, never a value.
+- Measured on b80acc2 by prototyping the rule: exactly four existing tests fail. They are `RuleBasedScorerTest` `totalEqualsTheSumOfTheContributions` (:47), `handWorkedFourFieldTotalIncludingANegativeConflictWeight` (:76) and `emitsOneContributionPerFieldInEvidenceIterationOrder` (:102), plus core `ReadmeExamplesTest.cheapFieldsAreComparedFirstAndARuleCanVetoBetweenTiers` (:203-221). All of `jresolve-profiles-ie` stays green, 81 of 81.
+- Baseline: `mvn clean verify` on b80acc2 gives 634 tests (553 core + 81 profiles), `BUILD SUCCESS`.
+
+## Acceptance
+- [ ] `RuleBasedScorer.Builder.build()` throws for any field that has a weight for a *partial-agreement* category but has neither an `EXACT` weight nor a `defaultWeight`. The partial-agreement categories are `VERY_HIGH`, `HIGH`, `MEDIUM`, `LOW`, `ALIAS_TRANSLATION`, `ALIAS_NICKNAME`, `ALIAS_VARIANT`, `SUBSUMED` and `PARTIAL_OVERLAP`. The message names the field and says that `EXACT` is unweighted. It contains no field value.
+- [ ] The exception type matches what the scoring package already throws for a configuration error. The Javadoc on `build()` states the rule and the type.
+- [ ] Setting `.weight(field, EXACT, 0.0)` explicitly is the opt-out: that configuration builds. A test pins this.
+- [ ] A field weighted only on `CONFLICT`, `MISSING_ONE`, `MISSING_BOTH` or a consumer-minted category still builds. A test pins at least one of these.
+- [ ] A test pins each rejection path: a band-only field, an alias-only field and a subsumption-only field. A `defaultWeight` also satisfies the rule, and a test pins that too.
+- [ ] `ComparisonCategory.SUBSUMED` and `ComparisonCategory.PARTIAL_OVERLAP` exist. `TokenSubsumptionComparator.SUBSUMED == ComparisonCategory.SUBSUMED`, and the same holds for `PARTIAL_OVERLAP`. A test asserts both identities with `isSameAs`.
+- [ ] `ComparisonCategory`'s class Javadoc contains a table mapping each built-in constant to the core comparator or comparators that produce it. It uses the neutral vocabulary `DomainVocabularyTest` enforces.
+- [ ] The four tests listed under Context are fixed by adding an `EXACT` weight. None of their asserted totals change, and each hand-worked comment still adds up.
+- [ ] If the README shows the snippet that `ReadmeExamplesTest` carries at :203-221, it is changed identically. No other README text is touched.
+- [ ] `mvn clean verify` passes. The commit body states the test count: 634 plus the tests this task adds.
+- [ ] The version stays `0.1.0-SNAPSHOT`.
+
+## Out of scope
+- Rewriting the README's two sharp-edge warnings (README.md:156-160 and :278-282). That is task 41, against the merged API.
+- Changing `FellegiSunterScorer` or `DefaultFellegiSunterModel`. The rule is about rule-based weights only.
+- Removing `TokenSubsumptionComparator.SUBSUMED`/`PARTIAL_OVERLAP`. They stay, as aliases of the same objects.
+- Any file in `jresolve-profiles-ie`.
+- `package-info.java` files (task 40).
