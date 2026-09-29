@@ -264,7 +264,7 @@ and a release runbook now exist, and the code gates (D19, the enforcer) make
 publishing core alone possible and profiles-ie impossible. It holds
 *conditionally* for the release: the mechanism is documented and dry-run as far
 as a bundle can be without credentials, but nothing has been published, and
-two gaps below (the `pom.xml` hint, LICENSE not in the jar) should be closed
+one gap below (LICENSE not in the jar) should be closed
 before it is.
 
 **What the guides were worth.** Tasks 40 and 43 each failed review twice, and
@@ -382,10 +382,8 @@ not close all five, and the two below say so rather than being ticked.
   (`DefaultEntityResolver.resolveOne` returns null without adding to
   `rejectedOut`), which makes false negatives awkward to diagnose. Needs a
   candidate API change.
-- **`pom.xml` dry-run comment (~:306) still recommends `-DskipPublishing=true`,**
-  which builds no bundle. One-line fix needed before release; no task owns it
-  now (task 44 may correct it).
 - **LICENSE is not packaged in the jar.** Central does not require it.
+- **pom.xml comment wording (minor):** "no offline dry run" can be read as contradicting the offline class-file and jar checks in RELEASING.md; "no offline way to build the bundle" is more exact.
 - **README minor:** the profiles-ie snippet uses `${jresolve.version}`, which
   consumers do not define; the clone URL is lowercase while the pom says
   `AindriuB`; the opt-out test could also assert a zero score.

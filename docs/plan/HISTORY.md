@@ -3,6 +3,12 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-29 — The pom's dry-run hint is corrected (task 45)
+
+The `release` profile comment in `pom.xml` no longer recommends `-DskipPublishing=true`; it says there is no offline dry run and points at RELEASING.md "Inspecting the bundle" and the staged `autoPublish=false` upload. Comment-only; 665 tests pass.
+
+**Cost:** none in the change. Do not re-derive the skipPublishing behaviour (it builds no bundle in plugin 0.11.0); the wording "no offline dry run" is slightly loose against the offline checks and is logged in PLAN.md.
+
 ## 2026-09-29 — Milestone 8 complete: package docs and developing guide (tasks 40, 43)
 
 Every package now has a `package-info.java` checked against source, and

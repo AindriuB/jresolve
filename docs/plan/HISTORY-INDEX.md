@@ -20,6 +20,7 @@ no row is one `planner` cannot find, and will re-plan.
 
 | Date | Task IDs | Summary | Heading (grep this exact string) |
 |---|---|---|---|
+| 2026-09-29 | 45 | pom.xml dry-run hint corrected to point at RELEASING.md's staged upload; comment-only, 665 tests | 2026-09-29 — The pom's dry-run hint is corrected (task 45) |
 | 2026-09-29 | 40, 43 | Milestone 8 complete, 665 tests. package-info for every package and DEVELOPING.md; three attempts each, two failures apiece where a commit message claimed a fix the diff lacked. Core 0.1.0 release (RELEASING.md) not yet done | 2026-09-29 — Milestone 8 complete: package docs and developing guide (tasks 40, 43) |
 | 2026-09-29 | 44 | RELEASING.md runbook merged, 662 tests (docs only). Bundle inspected via staged upload, since skipPublishing builds no bundle; attempt 1 failed on five points. LICENSE not in jar and pom.xml:306 hint remain open. 40, 43 on attempt 3 | 2026-09-29 — Milestone 8 wave 2: the release runbook (task 44) |
 | 2026-09-29 | 41, 42 | Wave 2 partial, 662 tests on main. README shows core 0.1.0, profiles-ie unpublished, sharp-edge warnings replaced by current behaviour; new docs/tuning.md. 40, 43, 44 on attempt 2 | 2026-09-29 — Milestone 8 wave 2, partial: README refresh and tuning guide (tasks 41, 42) |
