@@ -44,3 +44,29 @@ a manual Publish.
 - Running any release step, and changing the pom version.
 - Editing `pom.xml`, `release.yml` or D19. If the runbook reveals a defect there, report it in the commit body.
 - `DEVELOPING.md` (task 43) and `README.md` (task 41).
+
+## Attempt 1 — failed
+
+Review REQUEST CHANGES (commit cf1b9b7). Every other criterion met; the bundle
+procedure, gate lift, CI note and troubleshooting were verified against the pom
+and plugin 0.11.0 bytecode.
+
+- **Next-snapshot step contradicts the 0.x promise.** `RELEASING.md:166-170`
+  bumps to `X.Y.(Z+1)-SNAPSHOT` (`0.1.1-SNAPSHOT`); a breaking change would then
+  ship as a patch, against `:279`. After 0.1.0 the next version is
+  `0.2.0-SNAPSHOT`: bump the minor while on 0.x.
+- **LICENSE/NOTICE-in-jar check cannot pass.** `:198`, `:203` came from
+  irc-client. This repo has no NOTICE, and no pom packages LICENSE into the jar,
+  so `unzip -l` of the real jar fails it. pom edits are out of scope: restate
+  the check to match what the build actually produces, and name "LICENSE not in
+  the jar" as a known gap in the commit body. Central does not require it.
+- Also fix while there:
+  - `:229-230`: in 0.11.0 the bundle lands under the *first* project defining
+    the plugin, the root reactor, so it is `./target/central-publishing/central-bundle.zip`.
+  - `:203-204`: `versions:set` does not touch README's dependency snippet. Add a
+    step to update it (and check it) before the `Release X.Y.Z` commit, or drop
+    the check.
+  - `:151-153`: give one rule for when the tag is pushed. Recommended: after
+    Publish is pressed and the portal shows PUBLISHING/PUBLISHED, before the
+    snapshot bump.
+- Continue on branch `task/44-releasing-runbook`.
