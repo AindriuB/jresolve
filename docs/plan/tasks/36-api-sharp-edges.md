@@ -66,3 +66,25 @@ Tests PASS (642 = 634 + 8); review REQUEST CHANGES on one criterion.
   `RuleBasedScorer.java:38`; one blank line, not two, before the new tests at
   `ComparisonCategoryTest.java:101` and `TokenSubsumptionComparatorTest.java:273`.
 - Continue on branch `task/36-api-sharp-edges` (commit 9597f06); do not start over.
+
+## Attempt 2 — failed
+
+Tests PASS (642); review REQUEST CHANGES, again on the producer table only
+(`ComparisonCategory.java:19-39`, commit a491947). Every other criterion met.
+
+- **Alias pass-through is applied row by row, and misses rows.**
+  `AliasAwareFieldComparator.java:73` returns its delegate's category unchanged,
+  so it can produce `SUBSUMED` and `PARTIAL_OVERLAP` too (e.g. wrapping a
+  `TokenSubsumptionComparator`, "a b" vs "a b c", no alias → `SUBSUMED`). Drop
+  the per-row "also Alias when its delegate…" wording and state it once, in a
+  note under the table: when neither the exact check nor the repository
+  decides, `AliasAwareFieldComparator` returns its delegate's category as is.
+- **`MISSING_ONE`/`MISSING_BOTH` source is wrong.** Not only
+  `AbstractNullSafeFieldComparator`: `TokenSubsumptionComparator` returns them
+  itself from `compareNonNull` for token-less values (`:106`, `:109`; "" vs "x"
+  → `MISSING_ONE`). Name both.
+- Rows verified correct, keep: Exact (`:46`, `:48`), Similarity (`:36`, `:39`,
+  bands via `SimilarityBands:91-99`), Alias own returns (`:67`, `:71`),
+  TokenSubsumption (`:115-126`).
+- Javadoc-only. Continue on `task/36-api-sharp-edges`; run full
+  `mvn clean verify` before returning.
