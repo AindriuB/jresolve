@@ -268,7 +268,7 @@ two gaps below (the `pom.xml` hint, LICENSE not in the jar) should be closed
 before it is.
 
 **What the guides were worth.** Tasks 40 and 43 each failed review twice, and
-in three of the four failures the commit message claimed a fix the diff did not
+in two of the four failures (attempt 2 of each) the commit message claimed a fix the diff did not
 contain. Requiring the implementer to quote the changed lines from
 `git show HEAD:<path>` fixed it; use that for documentation tasks.
 
