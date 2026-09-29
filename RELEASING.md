@@ -121,6 +121,10 @@ Substitute the real version for `X.Y.Z` throughout. The first release is 0.1.0.
    ```bash
    mvn -B -q versions:set -DnewVersion=X.Y.Z -DgenerateBackupPoms=false
    git diff --stat                       # only pom.xml files, only the version
+   # versions:set does not touch README.md. Edit the jresolve-core dependency
+   # snippet to X.Y.Z by hand, then check it (the profiles-ie snippet stays
+   # as is: profiles-ie is not released while the gate holds):
+   grep -n -A1 '<artifactId>jresolve-core</artifactId>' README.md
    mvn -B -Prelease -pl jresolve-core -am -Dgpg.keyname=5F3261B55F4BEAE3 clean verify
    git commit -am "Release X.Y.Z"
    ```
@@ -148,9 +152,9 @@ Substitute the real version for `X.Y.Z` throughout. The first release is 0.1.0.
    list below, then press **Publish** (or **Drop** to discard it). Publishing is
    irreversible: a released version can never be withdrawn or replaced.
 
-6. **STOP AND CONFIRM: tag and push.** Only after the release is confirmed
-   (step 8) if you want a tag to mean "this exists on Central"; at the latest
-   right after Publish:
+6. **STOP AND CONFIRM: tag and push.** One rule: push the tag after Publish
+   has been pressed and the portal shows `PUBLISHING` or `PUBLISHED`, and
+   before the snapshot bump in step 7. Do not wait for step 8.
 
    ```bash
    git tag -a vX.Y.Z -m "Release X.Y.Z"
@@ -163,11 +167,14 @@ Substitute the real version for `X.Y.Z` throughout. The first release is 0.1.0.
 7. **Reopen development.**
 
    ```bash
-   mvn -B -q versions:set -DnewVersion=X.Y.(Z+1)-SNAPSHOT -DgenerateBackupPoms=false
+   mvn -B -q versions:set -DnewVersion=X.(Y+1).0-SNAPSHOT -DgenerateBackupPoms=false
    git commit -am "Back to snapshot" && git push
    ```
 
-   Write the real next number, for example `0.1.1-SNAPSHOT`.
+   While on 0.x, bump the **minor**: after `0.1.0` the next version is
+   `0.2.0-SNAPSHOT`. Work accumulating on the snapshot may break the API, and
+   a minor version is the only place 0.x lets that happen. Cut a patch
+   (`0.1.1`) only from a branch holding non-breaking fixes.
 
 8. **Confirm on Central itself.** A release is confirmed only when
    `https://repo1.maven.org/maven2/io/github/aindriub/jresolve-core/X.Y.Z/`
@@ -195,13 +202,16 @@ cannot load the jar; stop.
 ### The jars (works on any version, offline)
 
 ```bash
-unzip -l jresolve-core/target/jresolve-core-X.Y.Z.jar          # classes, LICENSE, NOTICE
+unzip -l jresolve-core/target/jresolve-core-X.Y.Z.jar          # classes only
 unzip -l jresolve-core/target/jresolve-core-X.Y.Z-sources.jar
 unzip -l jresolve-core/target/jresolve-core-X.Y.Z-javadoc.jar
 ```
 
-`LICENSE` and `NOTICE` must be inside the jar, and the README's dependency
-snippet must show the version being released.
+Expect the compiled classes and `META-INF/MANIFEST.MF` (and Maven's
+`META-INF/maven/` metadata). This repo has no `NOTICE`, and no pom packages
+`LICENSE` into the jar, so do not look for either: that is a known gap, and
+Central does not require it. Also check that the README's `jresolve-core`
+dependency snippet shows the version being released (step 2).
 
 ### The staged upload (the real check)
 
@@ -226,12 +236,11 @@ missing, extra or unsigned, press **Drop**, fix, and stage again. Dropping
 costs an upload but no release.
 
 The bundle zip is also left on disk after the deploy; locate and list it with
-(the plugin's output directory is `target/central-publishing/`, in the module
-that ran the upload):
+(in plugin 0.11.0 the bundle lands under the first project defining the
+plugin, the root reactor):
 
 ```bash
-find . -path '*central-publishing*' -name '*.zip'
-unzip -l <that zip>
+unzip -l target/central-publishing/central-bundle.zip
 ```
 
 The same listing, without uploading, was produced for task 38 (commit
