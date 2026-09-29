@@ -131,7 +131,6 @@ class ThresholdDecisionEngineTest {
         return order;
     }
 
-    @SafeVarargs
     private static List<ScoredCandidate<String>> candidates(Object[]... entries) {
         List<ScoredCandidate<String>> result = new ArrayList<>();
         for (Object[] entry : entries) {

@@ -76,7 +76,6 @@ class EntityResolverBuilderTest {
                         (Function<String, String>) v -> v, (Function<String, String>) v -> v,
                         new ExactFieldComparator<String>())
                 .cost("value", 0)
-                .required("value")
                 .scorer(pointsScorer())
                 .thresholds(pointsThresholds())
                 .decisionEngine(new ThresholdDecisionEngine<>(pointsThresholds()))

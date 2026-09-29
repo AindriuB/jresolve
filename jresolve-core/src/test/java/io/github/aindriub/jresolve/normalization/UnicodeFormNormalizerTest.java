@@ -16,7 +16,7 @@ class UnicodeFormNormalizerTest {
     void defaultsToNfd() {
         StringNormalizer normalizer = new UnicodeFormNormalizer();
 
-        String result = normalizer.normalize("café");
+        String result = normalizer.normalize("caf\u00e9");
 
         assertThat(Normalizer.isNormalized(result, Normalizer.Form.NFD)).isTrue();
     }
@@ -25,7 +25,7 @@ class UnicodeFormNormalizerTest {
     void nfdDecomposesAPrecomposedCharacterIntoBaseAndCombiningMark() {
         StringNormalizer normalizer = new UnicodeFormNormalizer(Normalizer.Form.NFD);
 
-        String result = normalizer.normalize("é");
+        String result = normalizer.normalize("\u00e9");
 
         assertThat(result).hasSize(2);
         assertThat(result.charAt(0)).isEqualTo('e');
@@ -36,23 +36,23 @@ class UnicodeFormNormalizerTest {
         StringNormalizer normalizer = new UnicodeFormNormalizer(Normalizer.Form.NFC);
         // "e" + U+0301 combining acute accent, written as an escape rather than
         // a raw combining mark, which renders identically to the precomposed
-        // é below and would let an NFC-normalizing pass on the source silently
+        // U+00E9 below and would let an NFC-normalizing pass on the source silently
         // make this test vacuous.
         String decomposed = "e\u0301";
 
         String result = normalizer.normalize(decomposed);
 
-        assertThat(result).isEqualTo("é");
+        assertThat(result).isEqualTo("\u00e9");
     }
 
     @Test
     void doesNotMutateTheInputReference() {
         StringNormalizer normalizer = new UnicodeFormNormalizer();
-        String input = "café";
+        String input = "caf\u00e9";
 
         normalizer.normalize(input);
 
-        assertThat(input).isEqualTo("café");
+        assertThat(input).isEqualTo("caf\u00e9");
     }
 
     @Test
