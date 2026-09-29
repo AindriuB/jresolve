@@ -222,6 +222,37 @@ as zero; `SUBSUMED` lives on the comparator that mints it rather than on
 than accessors, so the asymmetric overload takes method references. All three
 were compile errors or failing assertions, not opinions.
 
+## Milestone 8 — in progress
+
+Goal: `jresolve-core` 0.1.0 on Maven Central, plus developer guides. Tasks
+36-44. The release itself is manual, after the milestone, core only, per D19 as
+amended by task 38. Task files are in `docs/plan/tasks/`.
+
+### Wave 1
+
+- [ ] **36 — API sharp edges.** In progress, attempt 3 (failed review twice;
+  see the task file). Do not merge until it passes.
+- [x] **37 — Core cleanups.** Closed the "carried forward from milestone 1"
+  gaps: null `ScoredCandidate`, `FieldDefinition.isRequired`/`required(...)`,
+  the dead null-rule branch, Jaro-Winkler guard tests, the NFD test literal,
+  the redundant `@SafeVarargs`. 638 tests on the branch.
+- [x] **38 — Release gate and POM.** `-Prelease` now fails at profiles-ie with
+  D19's enforcer message; `-Prelease -pl jresolve-core -am verify` passes.
+- [x] **39 — Rename `forGivenName` to `forNames`.**
+
+### Wave 2 (not started)
+
+- [ ] **40 — package-info.**
+- [ ] **41 — README refresh.**
+- [ ] **42 — Tuning guide.**
+- [ ] **43 — Developing guide.**
+- [ ] **44 — RELEASING.md.** Carry-forward from task 38's review:
+  `-DskipPublishing=true` builds no bundle (and SNAPSHOTs never bundle), so the
+  hint at `pom.xml:306` does not give an inspectable bundle. The runbook must
+  document a working inspection procedure, e.g. a real staged upload with
+  autoPublish=false, inspect in the portal, then Drop or Publish. Consider
+  correcting the pom hint too.
+
 ## Notes for implementers
 
 - `jresolve-core` needs a JDK 17 toolchain (`~/.m2/toolchains.xml`, not part
@@ -252,11 +283,6 @@ reopen the review. Closed items are not listed; see `HISTORY.md`.
   it bands those two cases instead. Task 16's scorer configures weights for
   them anyway so a later change surfaces as a wrong score rather than a
   silent zero, but they are dead configuration today.
-- **`IrishNamePipeline.forGivenName()` is used for surnames too.** One
-  repository carries both, so the behaviour is right and the name is
-  narrower than the use. Rename or add a surname-shaped factory when
-  something else touches that file.
-
 ### Raised in milestone 3
 
 - **The explanation projection is narrow by choice, so each new signal needs
@@ -328,11 +354,6 @@ not close all five, and the two below say so rather than being ticked.
   still surprising from outside. Both are documented in the README; neither is
   fixed, because task 33 was explicitly not allowed to change the API to make
   the guide easier. Whether either deserves an API change is open.
-- **The release profile is possible but not permitted, and only a comment says
-  so.** `-Prelease` assembles and signs; D19's gate is prose in the POM and in
-  `PLAN.md`. Nothing mechanical stops a maintainer publishing illustrative
-  alias tables as reference data. A check that fails the release profile while
-  the tables are marked illustrative would close that, and is not written.
 - **CI does not yet run on a release path.** Task 34 runs the build; publishing
   is manual and untested end to end. That is deliberate — a release workflow
   touches secrets and is its own task — but it means the first real publish
@@ -396,17 +417,6 @@ the rules themselves live rather than only here.
 
 ### Carried forward from milestone 1
 
-- `JaroWinklerSimilarity` (task 02): the `maxPrefixLength` and
-  `boostThreshold` constructor guards have no automated test — deleting
-  either survives the suite.
-- `UnicodeFormNormalizerTest:28` (task 03): feeds a precomposed literal to
-  the NFD test. It passes today but proves nothing under an NFD-normalizing
-  editor pass.
-- `ScoredCandidate` (task 04) permits a null candidate. One such candidate
-  scored above `matchThreshold` makes `ThresholdDecisionEngine` throw from
-  `MatchResult`'s constructor rather than return a result.
-- `@SafeVarargs` on a reifiable `Object[]...` in `ThresholdDecisionEngineTest`
-  (task 06) is redundant.
 - **D6's residual hole** (narrowed by task 17, not fully closed). `build()`
   now inspects an engine that declares its thresholds and rejects a wrong
   scale or a divergent configuration. An engine whose
@@ -415,9 +425,3 @@ the rules themselves live rather than only here.
   applied thresholds in agreement. Every engine in this library declares, so
   this only bites a consumer's own implementation. Narrow and named rather
   than open.
-- `DefaultEntityResolver`'s constructor has a branch silently skipping null
-  rules, dead now that `build()` rejects them before construction.
-- `FieldDefinition.isRequired()`, set by `EntityResolverBuilder.required(...)`,
-  is read by nothing; `RuleBasedScorer.Builder#requiredField(String)` is the
-  mechanism that actually enforces required fields. A later milestone should
-  decide whether the flag earns its place.

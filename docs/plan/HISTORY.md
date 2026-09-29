@@ -3,6 +3,27 @@
 Append-only, newest first. See `docs/plan/HISTORY-INDEX.md` for a grep-first
 index — do not load this file whole.
 
+## 2026-09-29 — Milestone 8 wave 1, partial: core cleanups, a release gate that bites, and forNames (tasks 37, 38, 39)
+
+Three of wave 1's four tasks landed; task 36 is still in review. 638 tests
+(557 core + 81 profiles), `BUILD SUCCESS`. Task 37 closed the milestone 1
+carried-forward gaps: `ScoredCandidate` rejects a null candidate, the unread
+`FieldDefinition.isRequired` flag and `required(...)` builder method are gone,
+the dead null-rule branch in `DefaultEntityResolver` is removed, the
+Jaro-Winkler `maxPrefixLength`/`boostThreshold` guards are now tested, and the
+NFD test literal and redundant `@SafeVarargs` are fixed. Task 38 makes
+`-Prelease` fail at profiles-ie with D19's enforcer message, while
+`-Prelease -pl jresolve-core -am verify` passes, so the release gate is now
+mechanical rather than a comment. Task 39 renames `IrishNamePipeline.forGivenName`
+to `forNames`.
+
+**Cost:** `-DskipPublishing=true` builds no bundle, and SNAPSHOTs never bundle,
+so the dry-run hint at `pom.xml:306` does not produce anything inspectable;
+task 44's runbook must document a real procedure (staged upload with
+autoPublish=false, inspect, Drop or Publish) rather than repeat the hint. Do not
+retry the skip-publishing dry run as an inspection method. Task 36 failed review
+twice and is on attempt 3.
+
 ## 2026-09-17 — Milestone 7: a README that cannot rot, CI, and a release profile that is possible but not permitted (tasks 33, 34, 35)
 
 The library was good and unreachable: no README, no CI, and POMs carrying none
