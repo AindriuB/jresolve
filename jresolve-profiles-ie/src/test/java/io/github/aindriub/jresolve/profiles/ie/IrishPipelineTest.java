@@ -21,7 +21,7 @@ class IrishPipelineTest {
     private final FieldPipeline<String, String> address = IrishAddressPipeline.forSingleLine();
     private final FieldPipeline<java.util.List<String>, String> addressLines =
             IrishAddressPipeline.forLines();
-    private final FieldPipeline<String, String> givenName = IrishNamePipeline.forGivenName();
+    private final FieldPipeline<String, String> givenName = IrishNamePipeline.forNames();
 
     private static <T> FieldEvidence through(FieldPipeline<T, String> pipeline, T left, T right) {
         return pipeline.compare(pipeline.prepare(left), pipeline.prepare(right));
